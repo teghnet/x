@@ -1,2 +1,2 @@
-# eXperimental Go packages and modules
+# eXperimental Go Modules and Packages
 

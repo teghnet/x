@@ -18,7 +18,10 @@ type FXRates struct {
 	fxRates  map[string][]float64
 }
 
+// PrevDayRate returns the exchange rate for the previous working day
+// (as is the official way of calculating foreign exchange rates for accounting in Poland).
 func (m *FXRates) PrevDayRate(t time.Time, c string) FX {
+	t = t.AddDate(0, 0, -1)
 	d := t.Format("20060102")
 	for _, ok := m.fxRates[d]; !ok; {
 		t = t.AddDate(0, 0, -1)
@@ -41,5 +44,5 @@ type FX struct {
 }
 
 func (r FX) String() string {
-	return fmt.Sprintf("%s (%.9f) tabela nr %s z dnia %s", r.Calc, r.Rate, r.Name, r.Date.Format("2006-01-02"))
+	return fmt.Sprintf("%s tabela nr %s z dnia %s", r.Calc, r.Name, r.Date.Format("2006-01-02"))
 }

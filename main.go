@@ -26,14 +26,15 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Println(rates.PrevDayRate(time.Now(), "USD"))
-	fmt.Println(rates.PrevDayRate(time.Now(), "EUR"))
-	fmt.Println(rates.PrevDayRate(time.Now(), "THB"))
+	for t, _ := time.Parse("2006-01-02", "2024-06-01"); t.Before(time.Now()); t = t.AddDate(0, 0, 1) {
+		r := rates.PrevDayRate(t, "USD")
+		fmt.Printf("%s,%s,%s,%f,%s\n", t.Format("2006-01-02"), r.Name, r.Date.Format("2006-01-02"), r.Rate, r.Calc)
+	}
 
 	files, err := filepath.Glob(filename)
 	for _, file := range files {
 		log.Println(file)
-		m, _, err := mbank.ReadCSV(file)
+		m, ops, err := mbank.ReadCSV(file)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -48,8 +49,8 @@ func main() {
 		}
 
 		fmt.Printf("%#v\n", m)
-		// for _, op := range ops {
-		// 	fmt.Printf("%#v\n", op)
-		// }
+		for _, op := range ops {
+			fmt.Printf("%#v\n", op)
+		}
 	}
 }

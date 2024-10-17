@@ -13,8 +13,21 @@ import (
 	"google.golang.org/api/option"
 )
 
+// ProgressWriter tracks the progress of the download or upload
+type ProgressWriter struct {
+	Total    int64
+	Progress int64
+}
+
+func (pw *ProgressWriter) Write(p []byte) (int, error) {
+	n := len(p)
+	pw.Progress += int64(n)
+	fmt.Printf("\rDownloading: %.2f%% complete", float64(pw.Progress)/float64(pw.Total)*100)
+	return n, nil
+}
+
+// getClient handles authentication
 func getClient(config *oauth2.Config) *http.Client {
-	// Token file stores the user's access and refresh tokens
 	tokenFile := "token.json"
 
 	tok, err := tokenFromFile(tokenFile)
@@ -25,7 +38,16 @@ func getClient(config *oauth2.Config) *http.Client {
 	return config.Client(context.Background(), tok)
 }
 
+// downloadFileFromDrive downloads a file from Google Drive
 func downloadFileFromDrive(service *drive.Service, fileId, fileName string) error {
+	// Get the file metadata to obtain the size
+	fileInfo, err := service.Files.Get(fileId).Fields("size").Do()
+	if err != nil {
+		return err
+	}
+
+	totalSize := fileInfo.Size
+
 	// Create the file on disk
 	file, err := os.Create(fileName)
 	if err != nil {
@@ -40,8 +62,12 @@ func downloadFileFromDrive(service *drive.Service, fileId, fileName string) erro
 	}
 	defer res.Body.Close()
 
-	// Write the file content to the disk
-	_, err = io.Copy(file, res.Body)
+	// Create a progress writer
+	pw := &ProgressWriter{Total: totalSize}
+
+	// Write the file content to the disk and track progress
+	_, err = io.Copy(io.MultiWriter(file, pw), res.Body)
+	fmt.Println("\nDownload complete!")
 	return err
 }
 
@@ -69,7 +95,7 @@ func mainDL() {
 		return
 	}
 
-	// Download the file (replace with actual Google Drive file ID and desired local filename)
+	// Download the file
 	fileId := "your-google-drive-file-id"
 	fileName := "video.mp4"
 

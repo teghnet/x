@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 
 	"golang.org/x/oauth2/google"
@@ -10,6 +11,21 @@ import (
 	"google.golang.org/api/youtube/v3"
 )
 
+// ProgressReader tracks the progress of the upload
+type ProgressReader struct {
+	Reader   io.Reader
+	Total    int64
+	Progress int64
+}
+
+func (pr *ProgressReader) Read(p []byte) (int, error) {
+	n, err := pr.Reader.Read(p)
+	pr.Progress += int64(n)
+	fmt.Printf("\rUploading: %.2f%% complete", float64(pr.Progress)/float64(pr.Total)*100)
+	return n, err
+}
+
+// uploadVideoToYouTube uploads a video with progress tracking
 func uploadVideoToYouTube(service *youtube.Service, title, description, fileName string) error {
 	video := &youtube.Video{
 		Snippet: &youtube.VideoSnippet{
@@ -20,17 +36,28 @@ func uploadVideoToYouTube(service *youtube.Service, title, description, fileName
 		Status: &youtube.VideoStatus{PrivacyStatus: "public"},
 	}
 
-	// Open the video file for reading
+	// Open the video file
 	file, err := os.Open(fileName)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
+	// Get file size for progress tracking
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	totalSize := fileInfo.Size()
+
+	// Create a progress reader
+	pr := &ProgressReader{Reader: file, Total: totalSize}
+
 	// Upload the video
 	call := service.Videos.Insert([]string{"snippet", "status"}, video)
-	call.Media(file)
+	call.Media(pr)
 	_, err = call.Do()
+	fmt.Println("\nUpload complete!")
 	return err
 }
 

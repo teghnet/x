@@ -3,33 +3,55 @@ package nbp
 import (
 	"encoding/csv"
 	"fmt"
+	"log"
 	"os"
 	"path"
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"golang.org/x/text/encoding/charmap"
 
+	"github.com/teghnet/x/conf"
 	"github.com/teghnet/x/file"
 )
 
 func archFile(y int) string {
 	return fmt.Sprintf("archiwum_tab_a_%d.csv", y)
 }
-func archPath(y int) string {
-	return path.Join(".local", archFile(y))
-}
-func archLink(y int) string {
-	return fmt.Sprintf("https://static.nbp.pl/dane/kursy/Archiwum/%s", archFile(y))
+
+func archPath(y int, opts ...string) (string, error) {
+	dir, err := conf.StateDir(opts...)
+	if err != nil {
+		return "", err
+	}
+	return path.Join(dir, archFile(y)), nil
 }
 
-func GetArch(y int) error {
-	return file.Download(archLink(y), archPath(y))
+func GetArch(y int, opts ...string) error {
+	p, err := archPath(y, opts...)
+	if err != nil {
+		return err
+	}
+	fi, err := os.Stat(p)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if fi.ModTime().After(time.Now().Truncate(24 * time.Hour)) {
+		log.Printf("File %s is up to date", p)
+		return nil
+	}
+	return file.Download(fmt.Sprintf("https://static.nbp.pl/dane/kursy/Archiwum/%s", archFile(y)), p)
 }
 
-func ReadArch(y int) (*FXRates, error) {
-	f, err := os.Open(archPath(y))
+func ReadArch(y int, opts ...string) (*FXRates, error) {
+	p, err := archPath(y, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	f, err := os.Open(p)
 	if err != nil {
 		return nil, err
 	}

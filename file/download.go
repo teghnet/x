@@ -57,7 +57,7 @@ type ProgressWriter struct {
 func (pw *ProgressWriter) Write(p []byte) (int, error) {
 	n := len(p)
 	pw.Progress += int64(n)
-	fmt.Printf("\rDownloading: %.2f%% complete", float64(pw.Progress)/float64(pw.Total)*100)
+	log.Printf("\rDownloading: %.2f%% complete", float64(pw.Progress)/float64(pw.Total)*100)
 	return n, nil
 }
 
@@ -71,6 +71,6 @@ type ProgressReader struct {
 func (pr *ProgressReader) Read(p []byte) (int, error) {
 	n, err := pr.Reader.Read(p)
 	pr.Progress += int64(n)
-	fmt.Printf("\rUploading: %.2f%% complete", float64(pr.Progress)/float64(pr.Total)*100)
+	log.Printf("\rUploading: %.2f%% complete", float64(pr.Progress)/float64(pr.Total)*100)
 	return n, err
 }

@@ -16,12 +16,21 @@ type FXRates struct {
 	isoList  []string
 	unitList []int
 	fxRates  map[string][]float64
+
+	firstDate time.Time
+}
+
+func (m *FXRates) FirstDate() time.Time {
+	return m.firstDate.AddDate(0, 0, 1)
 }
 
 // PrevDayRate returns the exchange rate for the previous working day
 // (as is the official way of calculating foreign exchange rates for accounting in Poland).
-func (m *FXRates) PrevDayRate(t time.Time, c string) FX {
+func (m *FXRates) PrevDayRate(t time.Time, c string) (FX, error) {
 	t = t.AddDate(0, 0, -1)
+	if t.Before(m.firstDate) {
+		return FX{}, fmt.Errorf("no data for %s before %s", c, m.firstDate.Format("2006-01-02"))
+	}
 	d := t.Format("20060102")
 	for _, ok := m.fxRates[d]; !ok; {
 		t = t.AddDate(0, 0, -1)
@@ -33,7 +42,7 @@ func (m *FXRates) PrevDayRate(t time.Time, c string) FX {
 		Name: m.tabNums[d],
 		Date: t,
 		Calc: fmt.Sprintf("%d %s = %.4f PLN", m.unitList[m.isoIdxMap[c]], c, m.fxRates[d][m.isoIdxMap[c]]),
-	}
+	}, nil
 }
 
 type FX struct {

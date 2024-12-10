@@ -10,8 +10,6 @@ import (
 	"time"
 
 	"golang.org/x/text/encoding/charmap"
-
-	"github.com/teghnet/x/file"
 )
 
 var (
@@ -99,7 +97,7 @@ func ReadCSV(filename string) (*Meta, []Op, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	defer file.CloseFile(f)
+	defer closeFile(f)
 
 	r := csv.NewReader(charmap.Windows1250.NewDecoder().Reader(f))
 	r.Comma = ';'
@@ -245,4 +243,9 @@ func movePointLeft(s string) string {
 	s = fmt.Sprintf("%.8f", v/100)
 	return strings.TrimRight(strings.TrimRight(s, "0"), ".")
 
+}
+func closeFile(f *os.File) {
+	if err := f.Close(); err != nil {
+		log.Fatal(f.Name(), err)
+	}
 }

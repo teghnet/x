@@ -30,12 +30,8 @@ func GoogleClient(credentialsFile string, scopes []string) (*http.Client, error)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create config: %w", err)
 	}
-	//TODO: add user info to hash
-	sum256 := sha256.Sum256([]byte(strings.Join(append(scopes, config.ClientID), ",")))
-	return getClient(path.Join(
-		path.Dir(credentialsFile),
-		fmt.Sprintf("token_%x.json", sum256),
-	), config)
+	sum256 := sha256.Sum256([]byte(strings.Join(append(scopes, config.ClientID), "|")))
+	return getClient(path.Join(path.Dir(credentialsFile), fmt.Sprintf("token_%x.json", sum256)), config)
 }
 
 // Retrieve a token, saves the token, then returns the generated client.
@@ -67,14 +63,9 @@ func tokenFromFile(file string) (*oauth2.Token, error) {
 
 // Request a token from the web, then returns the retrieved token.
 func tokenFromWeb(config *oauth2.Config) (*oauth2.Token, error) {
-	//TODO: check if on-line access type is enough
 	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
-	fmt.Printf("Go to the following link in your browser then type the authorization code: \n\n%v\n\n", authURL)
+	log.Printf("Go to the following link in your browser then type the authorization code: \n\n%v\n\n", authURL)
 	openBrowser(authURL)
-	// var authCode string
-	// if _, err := fmt.Scan(&authCode); err != nil {
-	// 	log.Fatalf("Unable to read authorization code: %v", err)
-	// }
 
 	tok, err := config.Exchange(context.TODO(), waitForCode())
 	if err != nil {
@@ -85,7 +76,7 @@ func tokenFromWeb(config *oauth2.Config) (*oauth2.Token, error) {
 
 // Saves a token to a file path (create if not exists and truncate if exists).
 func saveToken(path string, token *oauth2.Token) error {
-	fmt.Printf("Saving credential file to: %s\n", path)
+	log.Printf("Saving credential file to: %s\n", path)
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return fmt.Errorf("unable to cache oauth token: %w", err)
@@ -103,17 +94,20 @@ func waitForCode() string {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		defer wg.Done()
 		code = r.FormValue("code")
-		fmt.Println("code:", code)
-		fmt.Println("state:", r.FormValue("state"))
-		fmt.Println("scope:", r.FormValue("scope"))
+		log.Println("code:", code)
+		log.Println("state:", r.FormValue("state"))
+		log.Println("scope:", r.FormValue("scope"))
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
+		_, err := w.Write([]byte("ok"))
+		if err != nil {
+			log.Println("write error:", err)
+		}
 	})
 
 	server := &http.Server{Addr: ":8080"}
 	go func() { log.Printf("Server stopped: %v", server.ListenAndServe()) }()
-	wg.Wait()
 
+	wg.Wait()
 	log.Printf("Shutting down: %v", server.Shutdown(context.Background()))
 	return code
 }

@@ -8,20 +8,21 @@ import (
 	"os"
 )
 
+// Download downloads a file from a URL and saves it to a local file.
 func Download(url string, filepath string) error {
 	// Create the file
 	out, err := os.Create(filepath)
 	if err != nil {
 		return err
 	}
-	defer CloseFile(out)
+	defer closeFile(out)
 
 	// Get the data
 	resp, err := http.Get(url)
 	if err != nil {
 		return err
 	}
-	defer CloseIO(resp.Body)
+	defer closeCloser(resp.Body)
 
 	// Check server response
 	if resp.StatusCode != http.StatusOK {
@@ -35,17 +36,6 @@ func Download(url string, filepath string) error {
 	}
 
 	return nil
-}
-
-func CloseIO(c io.Closer) {
-	if err := c.Close(); err != nil {
-		log.Fatal(err)
-	}
-}
-func CloseFile(f *os.File) {
-	if err := f.Close(); err != nil {
-		log.Fatal(f.Name(), err)
-	}
 }
 
 // ProgressWriter tracks the progress of the download or upload

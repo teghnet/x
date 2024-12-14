@@ -128,15 +128,6 @@ func AppDirFindOrMake(app string, appDirSearchOrder, appDirMakeOrder []func(stri
 	return ad, nil
 }
 
-// MustAppDir do AppDirFindOrMake and panic if error.
-func MustAppDir(app string, searchOrder ...func(string) string) string {
-	appDir, err := AppDirFindOrMake(app, searchOrder, searchOrder)
-	if err != nil {
-		panic(err)
-	}
-	return appDir
-}
-
 // AppFile will return a path to a file in the app directory. Creating the app directory if it doesn't exist.
 func AppFile(app, fileName string, searchOrder ...func(string) string) (string, error) {
 	appFile, err := AppDirFindOrMake(app, searchOrder, searchOrder)
@@ -144,6 +135,15 @@ func AppFile(app, fileName string, searchOrder ...func(string) string) (string, 
 		return "", err
 	}
 	return path.Join(appFile, fileName), nil
+}
+
+// MustAppDir do AppDirFindOrMake and panic if error.
+func MustAppDir(app string, searchOrder ...func(string) string) string {
+	appDir, err := AppDirFindOrMake(app, searchOrder, searchOrder)
+	if err != nil {
+		panic(err)
+	}
+	return appDir
 }
 
 // MustAppFile do AppFile and panic if error.

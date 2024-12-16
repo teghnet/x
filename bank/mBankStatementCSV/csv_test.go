@@ -1,4 +1,4 @@
-package mbank
+package mBankStatementCSV
 
 import (
 	"testing"

@@ -2,6 +2,7 @@ package dirs
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"path"
@@ -110,9 +111,9 @@ func MakeAppDir(app string, orderedPathFinders ...func(string) string) (string, 
 		orderedPathFinders = defaultAppDirMakeOrder
 	}
 	for _, f := range orderedPathFinders {
-		p := f(app)
-		if _, err := os.Stat(p); err != nil && errors.Is(err, os.ErrNotExist) {
-			return p, os.MkdirAll(p, 0755)
+		appDir := f(app)
+		if _, err := os.Stat(appDir); err != nil && errors.Is(err, os.ErrNotExist) {
+			return appDir, os.MkdirAll(appDir, 0755)
 		}
 	}
 	return "", ErrNotMade
@@ -121,36 +122,60 @@ func MakeAppDir(app string, orderedPathFinders ...func(string) string) (string, 
 // AppDirFindOrMake will search for app directory in the given order (or default order if none is given)
 // or create it if it doesn't exist.
 func AppDirFindOrMake(app string, appDirSearchOrder, appDirMakeOrder []func(string) string) (string, error) {
-	ad, err := FindAppDir(app, appDirSearchOrder...)
+	appDir, err := FindAppDir(app, appDirSearchOrder...)
 	if err != nil {
 		return MakeAppDir(app, appDirMakeOrder...)
 	}
-	return ad, nil
+	return appDir, nil
 }
 
-// AppFile will return a path to a file in the app directory. Creating the app directory if it doesn't exist.
+// AppFile will return a path to a file in the app directory,
+// creating the app directory if it doesn't exist.
 func AppFile(app, fileName string, searchOrder ...func(string) string) (string, error) {
-	appFile, err := AppDirFindOrMake(app, searchOrder, searchOrder)
+	appDir, err := AppDirFindOrMake(app, searchOrder, searchOrder)
 	if err != nil {
 		return "", err
 	}
-	return path.Join(appFile, fileName), nil
+	return path.Join(appDir, fileName), nil
 }
 
-// MustAppDir do AppDirFindOrMake and panic if error.
-func MustAppDir(app string, searchOrder ...func(string) string) string {
+func NewAppDir(app string, searchOrder ...func(string) string) (AppDir, error) {
 	appDir, err := AppDirFindOrMake(app, searchOrder, searchOrder)
-	if err != nil {
-		panic(err)
-	}
-	return appDir
+	return AppDir{
+		appDir: appDir,
+	}, err
 }
 
-// MustAppFile do AppFile and panic if error.
-func MustAppFile(app, fil string, searchOrder ...func(string) string) string {
-	appFile, err := AppFile(app, fil, searchOrder...)
+type AppDir struct {
+	appDir string
+}
+
+func (a AppDir) String() string {
+	return a.appDir
+}
+
+func (a AppDir) Dir(name string) (string, error) {
+	d := path.Join(a.appDir, name)
+	if fInfo, err := os.Stat(d); err == nil && fInfo.IsDir() {
+		return d, nil
+	}
+	fi, err := os.Stat(d)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return d, os.MkdirAll(d, 0755)
+		}
+		return "", fmt.Errorf("unable to determine dir's (%s) existence: %s", d, err)
+	}
+	if !fi.IsDir() {
+		return "", fmt.Errorf("not a directory: %s", d)
+	}
+	return d, nil
+}
+
+func (a AppDir) MustDir(name string) string {
+	d, err := a.Dir(name)
 	if err != nil {
 		panic(err)
 	}
-	return appFile
+	return d
 }

@@ -278,7 +278,7 @@ func parseRaw(tr Transaction) Transaction {
 			cc[s[0:2]] += s[2:]
 		}
 		tr.Code2 = cc["00"]
-		tr.Title = strings.TrimSpace(cc["20"] + cc["21"] + cc["22"] + cc["23"] + cc["24"] + cc["25"])
+		tr.Title = strings.TrimSpace(cc["20"] + " " + cc["21"] + cc["22"] + cc["23"] + cc["24"] + cc["25"])
 		tr.Ref = "'" + strings.TrimSpace(cc["26"]+cc["27"]+cc["28"])
 		tr.NRB = "'" + strings.TrimSpace(cc["29"])
 		tr.NRozl = "'" + strings.TrimSpace(cc["30"])

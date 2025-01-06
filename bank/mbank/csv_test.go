@@ -1,4 +1,4 @@
-package mBankStatement
+package mbank
 
 import (
 	"testing"

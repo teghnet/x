@@ -1,4 +1,4 @@
-package mBankStatement
+package mbank
 
 import (
 	"crypto/sha256"
@@ -92,12 +92,15 @@ func (o Oper) hash() []byte {
 		o.AccCurrency,
 		o.AccBank,
 		o.AccNumber,
+
 		o.PostingDate,
 		o.Date,
+
 		o.Desc,
 		o.Title,
 		o.ExtName,
 		o.ExtAccount,
+
 		o.Amount,
 		o.Balance,
 	}, zeroByte)))
@@ -106,14 +109,14 @@ func (o Oper) hash() []byte {
 
 var (
 	// headers
-	headerAccDate    = "#Data księgowania"
-	headerDate       = "#Data operacji"
-	headerDesc       = "#Opis operacji"
-	headerTitle      = "#Tytuł"
-	headerExtName    = "#Nadawca/Odbiorca"
-	headerExtAccount = "#Numer konta"
-	headerAmount     = "#Kwota"
-	headerBalance    = "#Saldo po operacji"
+	headerPostingDate = "#Data księgowania"
+	headerDate        = "#Data operacji"
+	headerDesc        = "#Opis operacji"
+	headerTitle       = "#Tytuł"
+	headerExtName     = "#Nadawca/Odbiorca"
+	headerExtAccount  = "#Numer konta"
+	headerAmount      = "#Kwota"
+	headerBalance     = "#Saldo po operacji"
 )
 
 func ReadCSV(filePath string) (*Meta, []Oper, error) {
@@ -178,7 +181,7 @@ func extract(rows [][]string) (*Meta, []Oper, error) {
 			m.OpeningBal = cleanCurrency(row[1], m.Currency)
 		case markerStatement:
 			m.Desc = row[0]
-		case headerAccDate:
+		case headerPostingDate:
 			start = i + 1
 			m.colIdxMap = make(map[string]int)
 			for j, v := range row {
@@ -202,14 +205,17 @@ func extract(rows [][]string) (*Meta, []Oper, error) {
 			AccCurrency: m.Currency,
 			AccBank:     "mBank",
 			AccNumber:   m.AccountNumber,
-			PostingDate: cleanDate(row[m.colIdxMap[headerAccDate]]),
+
+			PostingDate: cleanDate(row[m.colIdxMap[headerPostingDate]]),
 			Date:        cleanDate(row[m.colIdxMap[headerDate]]),
 			Desc:        cleanQuote(row[m.colIdxMap[headerDesc]]),
 			Title:       cleanQuote(row[m.colIdxMap[headerTitle]]),
-			ExtName:     cleanQuote(row[m.colIdxMap[headerExtName]]),
-			ExtAccount:  cleanAccount(row[m.colIdxMap[headerExtAccount]]),
-			Amount:      cleanCurrency(row[m.colIdxMap[headerAmount]], m.Currency),
-			Balance:     cleanCurrency(row[m.colIdxMap[headerBalance]], m.Currency),
+
+			ExtName:    cleanQuote(row[m.colIdxMap[headerExtName]]),
+			ExtAccount: cleanAccount(row[m.colIdxMap[headerExtAccount]]),
+
+			Amount:  cleanCurrency(row[m.colIdxMap[headerAmount]], m.Currency),
+			Balance: cleanCurrency(row[m.colIdxMap[headerBalance]], m.Currency),
 		}
 		rx.Hash = big.NewInt(0).SetBytes(rx.hash()).Text(62)
 		rxs = append(rxs, rx)

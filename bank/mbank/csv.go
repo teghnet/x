@@ -5,7 +5,6 @@ import (
 	"encoding/csv"
 	"fmt"
 	"log"
-	"math/big"
 	"os"
 	"strconv"
 	"strings"
@@ -81,7 +80,7 @@ type Oper struct {
 	Amount  string
 	Balance string
 
-	Hash string
+	Hash []byte
 }
 
 var zeroByte = string([]byte{0})
@@ -217,7 +216,7 @@ func extract(rows [][]string) (*Meta, []Oper, error) {
 			Amount:  cleanCurrency(row[m.colIdxMap[headerAmount]], m.Currency),
 			Balance: cleanCurrency(row[m.colIdxMap[headerBalance]], m.Currency),
 		}
-		rx.Hash = big.NewInt(0).SetBytes(rx.hash()).Text(62)
+		rx.Hash = rx.hash()
 		rxs = append(rxs, rx)
 	}
 	return &m, rxs, nil

@@ -3,6 +3,7 @@ package ing
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha256"
 	"fmt"
 	"log"
 	"os"
@@ -54,7 +55,38 @@ type Transaction struct {
 
 	Payer string
 	Card  string
+
+	Hash []byte
 }
+
+func (t Transaction) hash() []byte {
+	h := sha256.Sum256([]byte(strings.Join([]string{
+		t.AccountingMonth,
+		t.AccountName,
+		t.AccountingDate,
+		t.Amount,
+		t.AccountCurrency,
+
+		t.ID,
+		t.Title,
+		t.Ref,
+
+		t.Name,
+		t.IBAN,
+		t.BIC,
+
+		t.Currency,
+		t.CurrencyAmount,
+		t.CurrencyDate,
+		t.ExRate,
+		t.ExID,
+
+		t.Amount,
+	}, zeroByte)))
+	return h[:16]
+}
+
+var zeroByte = string([]byte{0})
 
 type MT940 struct {
 	AccountIBAN   string
@@ -295,6 +327,7 @@ func parseRaw(tr Transaction) Transaction {
 			log.Printf("exRate2 != ExRate: %s != %s", tr.exRate2, tr.ExRate)
 		}
 	}
+	tr.Hash = tr.hash()
 	return tr
 }
 

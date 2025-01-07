@@ -1,11 +1,14 @@
 package mbank
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/csv"
 	"fmt"
+	"io"
 	"log"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -118,6 +121,28 @@ var (
 	headerBalance     = "#Saldo po operacji"
 )
 
+type reader struct {
+	r io.Reader
+}
+
+// Read implements io.Reader interface
+// this needs to be fixed to handle quoted strings inside quoted strings between semicolons
+func (r *reader) Read(p []byte) (n int, err error) {
+	x := make([]byte, len(p))
+	n, err = r.r.Read(x)
+	if err != nil {
+		return n, err
+	}
+	rg := regexp.MustCompile(`;"([^"]*("+[^;"]*"+)+[^"]*)";`)
+	if ss := rg.FindSubmatch(x); len(ss) > 1 {
+		log.Println(string(ss[1]))
+		xx := strings.ReplaceAll(string(ss[1]), `"`, "'")
+		x = bytes.ReplaceAll(x, ss[1], []byte(xx))
+	}
+	copy(p, x)
+	return n, nil
+}
+
 func ReadCSV(filePath string) (*Meta, []Oper, error) {
 	f, err := os.Open(filePath)
 	if err != nil {
@@ -125,7 +150,7 @@ func ReadCSV(filePath string) (*Meta, []Oper, error) {
 	}
 	defer closeFile(f)
 
-	r := csv.NewReader(charmap.Windows1250.NewDecoder().Reader(f))
+	r := csv.NewReader(&reader{r: charmap.Windows1250.NewDecoder().Reader(f)})
 	r.Comma = ';'
 	r.FieldsPerRecord = -1
 	r.LazyQuotes = true

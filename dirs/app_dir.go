@@ -22,7 +22,7 @@ func (a AppDir) String() string {
 	return a.appDir
 }
 
-func (a AppDir) Dir(name ...string) (string, error) {
+func (a AppDir) dir(create bool, name ...string) (string, error) {
 	if len(name) == 0 {
 		return "", fmt.Errorf("no dir name given")
 	}
@@ -30,6 +30,9 @@ func (a AppDir) Dir(name ...string) (string, error) {
 	fi, err := os.Stat(d)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
+			if !create {
+				return d, err
+			}
 			return d, os.MkdirAll(d, 0755)
 		}
 		return "", fmt.Errorf("unable to determine dir's (%s) existence: %s", d, err)
@@ -40,6 +43,27 @@ func (a AppDir) Dir(name ...string) (string, error) {
 	return d, nil
 }
 
+// Dir will return a path to a new in the app directory.
+// It will create the dir.
+func (a AppDir) Dir(name ...string) (string, error) {
+	return a.dir(true, name...)
+}
+
+// MightDir will return a path to a directory in the app directory.
+// It will NOT create the dir but WILL return the path or panic if it's not possible.
+func (a AppDir) MightDir(name ...string) string {
+	d, err := a.dir(false, name...)
+	if errors.Is(err, os.ErrNotExist) {
+		return d
+	}
+	if err != nil {
+		panic(err)
+	}
+	return d
+}
+
+// MustDir will return a path to a new in the app directory.
+// It WILL create the dir or panic if it's not possible.
 func (a AppDir) MustDir(name ...string) string {
 	d, err := a.Dir(name...)
 	if err != nil {

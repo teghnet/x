@@ -1,3 +1,6 @@
+// Copyright (c) $year Paweł Zaremba
+// SPDX-License-Identifier: MIT
+
 package paths_test
 
 import (
@@ -12,6 +15,7 @@ func TestPaths_App(t *testing.T) {
 		n string
 		f func(app string) string
 	}{
+
 		{"paths.AppConfig", paths.AppConfig},
 		{"paths.AppCache", paths.AppCache},
 		{"paths.AppState", paths.AppState},

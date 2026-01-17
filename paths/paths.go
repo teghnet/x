@@ -1,3 +1,6 @@
+// Copyright (c) $year Paweł Zaremba
+// SPDX-License-Identifier: MIT
+
 package paths
 
 import (

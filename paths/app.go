@@ -80,7 +80,7 @@ func AppData(appName string) string {
 
 	dir := os.Getenv("XDG_DATA_HOME")
 	if dir != "" {
-		return dir
+		return filepath.Join(dir, appName)
 	}
 
 	homeDir, err := os.UserHomeDir()
@@ -111,7 +111,7 @@ func AppState(appName string) string {
 
 	dir := os.Getenv("XDG_STATE_HOME")
 	if dir != "" {
-		return dir
+		return filepath.Join(dir, appName)
 	}
 
 	homeDir, err := os.UserHomeDir()
@@ -119,5 +119,5 @@ func AppState(appName string) string {
 		panic(fmt.Sprintf("unable to determine app state directory: %v", err))
 	}
 
-	return filepath.Join(homeDir, ".local", "share", appName)
+	return filepath.Join(homeDir, ".local", "state", appName)
 }

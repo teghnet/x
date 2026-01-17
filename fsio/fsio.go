@@ -6,9 +6,11 @@ package fsio
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"iter"
 	"log"
+	"os"
 
 	"github.com/teghnet/x/internal"
 )
@@ -42,6 +44,30 @@ func FSJSONList[T any](db fs.FS, name string) iter.Seq2[T, error] {
 		}
 	}
 }
+func FSJSONArray[T any](db fs.FS, name string) iter.Seq2[T, error] {
+	return func(yield func(T, error) bool) {
+		f, err := db.Open(name)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer internal.FatalClose(f)
+		dec := json.NewDecoder(f)
+		if err = dropToken(dec, '['); err != nil {
+			log.Printf("failed to drop leading array token: %v", err)
+			return
+		}
+		for dec.More() {
+			var v T
+			if !yield(v, dec.Decode(&v)) {
+				return
+			}
+		}
+		if err = dropToken(dec, ']'); err != nil {
+			log.Printf("failed to drop trailing array token: %v", err)
+			return
+		}
+	}
+}
 
 func dropToken(dec *json.Decoder, r json.Delim) error {
 	t, err := dec.Token()
@@ -68,4 +94,24 @@ func FSGlob(f fs.FS, pattern string) iter.Seq[string] {
 			}
 		}
 	}
+}
+
+func DynamicWriter(name string, append bool) (io.WriteCloser, error) {
+	if name == "-" || name == "stdout" {
+		return os.Stdout, nil
+	}
+	if name == "=" || name == "stderr" {
+		return os.Stderr, nil
+	}
+	flag := os.O_WRONLY | os.O_CREATE
+	if append {
+		flag |= os.O_APPEND
+	} else {
+		flag |= os.O_TRUNC
+	}
+	f, err := os.OpenFile(name, flag, 0600)
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
 }

@@ -4,6 +4,7 @@
 package fsio_test
 
 import (
+	"os"
 	"testing"
 	"testing/fstest"
 
@@ -166,5 +167,178 @@ func TestFSGlob_InvalidPattern(t *testing.T) {
 	// Invalid pattern should cause panic
 	for range fsio.FSGlob(fs, "[") {
 		// This should not be reached
+	}
+}
+
+func TestFSJSONArray(t *testing.T) {
+	type item struct {
+		ID   int    `json:"id"`
+		Name string `json:"name"`
+	}
+
+	fs := fstest.MapFS{
+		"items.json": &fstest.MapFile{
+			Data: []byte(`[{"id":1,"name":"first"},{"id":2,"name":"second"},{"id":3,"name":"third"}]`),
+		},
+	}
+
+	var items []item
+	for item, err := range fsio.FSJSONArray[item](fs, "items.json") {
+		if err != nil {
+			t.Fatalf("FSJSONArray() unexpected error: %v", err)
+		}
+		items = append(items, item)
+	}
+
+	if len(items) != 3 {
+		t.Errorf("FSJSONArray() got %d items, want 3", len(items))
+	}
+
+	expected := []struct {
+		id   int
+		name string
+	}{
+		{1, "first"},
+		{2, "second"},
+		{3, "third"},
+	}
+	for i, want := range expected {
+		if items[i].ID != want.id {
+			t.Errorf("FSJSONArray() items[%d].ID = %d, want %d", i, items[i].ID, want.id)
+		}
+		if items[i].Name != want.name {
+			t.Errorf("FSJSONArray() items[%d].Name = %s, want %s", i, items[i].Name, want.name)
+		}
+	}
+}
+
+func TestFSJSONArray_Empty(t *testing.T) {
+	type item struct {
+		ID int `json:"id"`
+	}
+
+	fs := fstest.MapFS{
+		"empty.json": &fstest.MapFile{
+			Data: []byte(`[]`),
+		},
+	}
+
+	var count int
+	for _, err := range fsio.FSJSONArray[item](fs, "empty.json") {
+		if err != nil {
+			t.Fatalf("FSJSONArray() unexpected error: %v", err)
+		}
+		count++
+	}
+
+	if count != 0 {
+		t.Errorf("FSJSONArray() got %d items, want 0", count)
+	}
+}
+
+func TestDynamicWriter_Stdout(t *testing.T) {
+	tests := []string{"-", "stdout"}
+	for _, name := range tests {
+		t.Run(name, func(t *testing.T) {
+			w, err := fsio.DynamicWriter(name, false)
+			if err != nil {
+				t.Fatalf("DynamicWriter() error = %v", err)
+			}
+			// Should return os.Stdout, we can't directly compare, but we know it shouldn't be nil
+			if w == nil {
+				t.Error("DynamicWriter() returned nil for stdout")
+			}
+			// Don't close stdout
+		})
+	}
+}
+
+func TestDynamicWriter_Stderr(t *testing.T) {
+	tests := []string{"=", "stderr"}
+	for _, name := range tests {
+		t.Run(name, func(t *testing.T) {
+			w, err := fsio.DynamicWriter(name, false)
+			if err != nil {
+				t.Fatalf("DynamicWriter() error = %v", err)
+			}
+			if w == nil {
+				t.Error("DynamicWriter() returned nil for stderr")
+			}
+			// Don't close stderr
+		})
+	}
+}
+
+func TestDynamicWriter_File(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := tmpDir + "/output.txt"
+
+	w, err := fsio.DynamicWriter(filePath, false)
+	if err != nil {
+		t.Fatalf("DynamicWriter() error = %v", err)
+	}
+	defer w.Close()
+
+	_, err = w.Write([]byte("hello"))
+	if err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+}
+
+func TestDynamicWriter_FileAppend(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := tmpDir + "/append.txt"
+
+	// Write first content
+	w1, err := fsio.DynamicWriter(filePath, false)
+	if err != nil {
+		t.Fatalf("DynamicWriter() error = %v", err)
+	}
+	_, _ = w1.Write([]byte("first"))
+	w1.Close()
+
+	// Append second content
+	w2, err := fsio.DynamicWriter(filePath, true)
+	if err != nil {
+		t.Fatalf("DynamicWriter() append error = %v", err)
+	}
+	_, _ = w2.Write([]byte("second"))
+	w2.Close()
+
+	// Verify content using os.ReadFile
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	if string(data) != "firstsecond" {
+		t.Errorf("DynamicWriter append got %q, want %q", string(data), "firstsecond")
+	}
+}
+
+func TestDynamicWriter_FileTruncate(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := tmpDir + "/truncate.txt"
+
+	// Write first content
+	w1, err := fsio.DynamicWriter(filePath, false)
+	if err != nil {
+		t.Fatalf("DynamicWriter() error = %v", err)
+	}
+	_, _ = w1.Write([]byte("first content that is long"))
+	w1.Close()
+
+	// Truncate and write second content
+	w2, err := fsio.DynamicWriter(filePath, false)
+	if err != nil {
+		t.Fatalf("DynamicWriter() truncate error = %v", err)
+	}
+	_, _ = w2.Write([]byte("short"))
+	w2.Close()
+}
+
+func TestDynamicWriter_InvalidPath(t *testing.T) {
+	_, err := fsio.DynamicWriter("/nonexistent/path/to/file.txt", false)
+	if err == nil {
+		t.Error("DynamicWriter() expected error for invalid path")
 	}
 }

@@ -1,6 +1,6 @@
 # eXperimental Go Stuff
 
-This repository contains packages (experimental or stupid) with no promises of anything (e.g. backwards compatibility).
+This repository contains packages (experimental or useful for me only) with no promises or guarantees.
 
 # Licensing
 

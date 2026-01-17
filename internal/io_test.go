@@ -19,20 +19,20 @@ func (m *mockCloser) Close() error {
 	return m.err
 }
 
-func TestFatalClose_Success(t *testing.T) {
+func TestCloseFatal_Success(t *testing.T) {
 	m := &mockCloser{err: nil}
-	// FatalClose should not panic when Close() returns nil
-	internal.FatalClose(m)
+	// CloseFatal should not panic when Close() returns nil
+	internal.CloseFatal(m)
 }
 
-func TestPrintClose_Success(t *testing.T) {
+func TestClosePrint_Success(t *testing.T) {
 	m := &mockCloser{err: nil}
-	// PrintClose should not panic when Close() returns nil
-	internal.PrintClose(m)
+	// ClosePrint should not panic when Close() returns nil
+	internal.ClosePrint(m)
 }
 
-func TestPrintClose_Error(t *testing.T) {
+func TestClosePrint_Error(t *testing.T) {
 	m := &mockCloser{err: errors.New("close error")}
-	// PrintClose should log but not panic when Close() returns an error
-	internal.PrintClose(m)
+	// ClosePrint should log but not panic when Close() returns an error
+	internal.ClosePrint(m)
 }

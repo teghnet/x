@@ -8,14 +8,14 @@ import (
 	"log"
 )
 
-func FatalClose(c io.Closer) {
+func CloseFatal(c io.Closer) {
 	err := c.Close()
 	if err != nil {
 		log.Fatalf("could not close: %v", err)
 	}
 }
 
-func PrintClose(c io.Closer) {
+func ClosePrint(c io.Closer) {
 	err := c.Close()
 	if err != nil {
 		log.Printf("could not close: %v", err)

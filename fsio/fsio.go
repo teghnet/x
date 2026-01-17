@@ -34,7 +34,7 @@ func FSJSONList[T any](db fs.FS, name string) iter.Seq2[T, error] {
 		if err != nil {
 			log.Fatal(err)
 		}
-		defer internal.FatalClose(f)
+		defer internal.CloseFatal(f)
 		dec := json.NewDecoder(f)
 		for dec.More() {
 			var v T
@@ -50,7 +50,7 @@ func FSJSONArray[T any](db fs.FS, name string) iter.Seq2[T, error] {
 		if err != nil {
 			log.Fatal(err)
 		}
-		defer internal.FatalClose(f)
+		defer internal.CloseFatal(f)
 		dec := json.NewDecoder(f)
 		if err = dropToken(dec, '['); err != nil {
 			log.Printf("failed to drop leading array token: %v", err)

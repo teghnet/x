@@ -1,18 +1,3 @@
-# Temporary and local files
-.idea/
-.DS_Store
-
-# Binaries for programs and plugins
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-
-# Test binary, built with `go test -c` and the go coverage tool output
-*.test
-*.out
-
 # Dependency directories
 vendor/
 

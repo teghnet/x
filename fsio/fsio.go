@@ -26,7 +26,7 @@ func FSLoadJSON[T any](db fs.FS, name string) (T, error) {
 	return v, nil
 }
 
-func FSIterateJSONs[T any](db fs.FS, name string) iter.Seq2[T, error] {
+func FSJSONList[T any](db fs.FS, name string) iter.Seq2[T, error] {
 	return func(yield func(T, error) bool) {
 		f, err := db.Open(name)
 		if err != nil {
@@ -43,15 +43,13 @@ func FSIterateJSONs[T any](db fs.FS, name string) iter.Seq2[T, error] {
 	}
 }
 
-// FSUnmarshalJSON reads a JSON file from the filesystem
-// and unmarshals it into the provided variable.
-func FSUnmarshalJSON[T any](f fs.FS, path string, v T) error {
-	data, err := fs.ReadFile(f, path)
+func dropToken(dec *json.Decoder, r json.Delim) error {
+	t, err := dec.Token()
 	if err != nil {
-		return fmt.Errorf("fsio.FSUnmarshalJSON: %w", err)
+		return fmt.Errorf("failed to read token: %w", err)
 	}
-	if err := json.Unmarshal(data, v); err != nil {
-		return fmt.Errorf("fsio.FSUnmarshalJSON: %w", err)
+	if t.(json.Delim) != r {
+		return fmt.Errorf("expected '%s' at the end, got %v", r, t)
 	}
 	return nil
 }

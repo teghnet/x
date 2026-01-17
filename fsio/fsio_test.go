@@ -73,7 +73,7 @@ func TestFSLoadJSON(t *testing.T) {
 	}
 }
 
-func TestFSIterateJSONs(t *testing.T) {
+func TestFSJSONList(t *testing.T) {
 	type item struct {
 		ID int `json:"id"`
 	}
@@ -88,9 +88,9 @@ func TestFSIterateJSONs(t *testing.T) {
 	}
 
 	var ids []int
-	for item, err := range fsio.FSIterateJSONs[item](fs, "items.jsonl") {
+	for item, err := range fsio.FSJSONList[item](fs, "items.jsonl") {
 		if err != nil {
-			t.Fatalf("FSIterateJSONs() unexpected error: %v", err)
+			t.Fatalf("FSJSONList() unexpected error: %v", err)
 		}
 		ids = append(ids, item.ID)
 	}
@@ -102,70 +102,6 @@ func TestFSIterateJSONs(t *testing.T) {
 		if ids[i] != want {
 			t.Errorf("FSIterateJSONs() ids[%d] = %d, want %d", i, ids[i], want)
 		}
-	}
-}
-
-func TestFSUnmarshalJSON(t *testing.T) {
-	type config struct {
-		Host string `json:"host"`
-		Port int    `json:"port"`
-	}
-
-	tests := []struct {
-		name     string
-		fs       fstest.MapFS
-		fileName string
-		wantHost string
-		wantPort int
-		wantErr  bool
-	}{
-		{
-			name: "valid JSON",
-			fs: fstest.MapFS{
-				"config.json": &fstest.MapFile{
-					Data: []byte(`{"host":"localhost","port":8080}`),
-				},
-			},
-			fileName: "config.json",
-			wantHost: "localhost",
-			wantPort: 8080,
-			wantErr:  false,
-		},
-		{
-			name:     "file not found",
-			fs:       fstest.MapFS{},
-			fileName: "missing.json",
-			wantErr:  true,
-		},
-		{
-			name: "invalid JSON",
-			fs: fstest.MapFS{
-				"bad.json": &fstest.MapFile{
-					Data: []byte(`not json`),
-				},
-			},
-			fileName: "bad.json",
-			wantErr:  true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var cfg config
-			err := fsio.FSUnmarshalJSON(tt.fs, tt.fileName, &cfg)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("FSUnmarshalJSON() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !tt.wantErr {
-				if cfg.Host != tt.wantHost {
-					t.Errorf("FSUnmarshalJSON() Host = %v, want %v", cfg.Host, tt.wantHost)
-				}
-				if cfg.Port != tt.wantPort {
-					t.Errorf("FSUnmarshalJSON() Port = %v, want %v", cfg.Port, tt.wantPort)
-				}
-			}
-		})
 	}
 }
 

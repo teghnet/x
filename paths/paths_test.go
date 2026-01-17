@@ -1,4 +1,4 @@
-package internal
+package paths_test
 
 import (
 	"strings"
@@ -20,7 +20,7 @@ func TestPaths_App(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.n, func(t *testing.T) {
 			p := tt.f("testapp")
-			if !strings.HasSuffix(p, "testapp") {
+			if !strings.HasSuffix(p, "/testapp") {
 				t.Errorf("expected path to end with `testapp` name, got: %s", p)
 				return
 			}
@@ -28,11 +28,13 @@ func TestPaths_App(t *testing.T) {
 		})
 	}
 	for _, tt := range testCases {
-		t.Run(tt.n, func(t *testing.T) {
+		t.Run(tt.n+" empty app name", func(t *testing.T) {
+			defer func() {
+				if recover() == nil {
+					t.Errorf("expected panic")
+				}
+			}()
 			tt.f("")
-			if recover() == nil {
-				t.Errorf("expected panic")
-			}
 		})
 	}
 }

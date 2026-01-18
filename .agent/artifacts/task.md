@@ -1,29 +1,18 @@
-# Unimatrix TUI Architecture Planning
+# Unimatrix TUI Implementation
 
-## Current Objective
-Implement the Unimatrix TUI application.
+## Phase 1: TUI Foundation ✓
+- [x] Create `unimatrix/go.mod` as separate module
+- [x] Create `main.go` with flag parsing
+- [x] Implement Lipgloss styles (`internal/tui/styles.go`)
+- [x] Create root Bubble Tea model (`internal/tui/tui.go`)
 
-## Tasks
+## Phase 2: TUI Components ✓
+- [x] Implement `tree.Model` with mock data
+- [x] Implement `preview.Model`
+- [x] Implement `header.Model` and `statusbar.Model`
+- [x] Wire up Browser view with pane switching
 
-### Phase 1: TUI Foundation
-- [/] Create `unimatrix/go.mod` as separate module
-- [ ] Create `main.go` with flag parsing
-- [ ] Implement Lipgloss styles (`internal/tui/styles.go`)
-- [ ] Create root Bubble Tea model (`internal/tui/tui.go`)
-
-### Phase 2: TUI Components
-- [ ] Implement `tree.Model` with mock data
-- [ ] Implement `preview.Model`
-- [ ] Implement `header.Model` and `statusbar.Model`
-- [ ] Wire up Browser view with pane switching
-
-### Phase 3: Domain Models (Later)
-### Phase 4: Local Sync (Later)
-### Phase 5: External Connectors (Later)
-
-## Completed
-- [x] Analyze existing codebase and packages
-- [x] Create implementation plan for TUI architecture
-- [x] Update PLAN.md with architecture overview
-- [x] Create /go-architect workflow
-- [x] Get user approval on the plan
+## Next: Phase 3: Domain Models
+- [ ] Create `model.Node`, `model.Link`, `model.Profile`
+- [ ] Create `internal/app/` with config management
+- [ ] Connect TUI to app layer

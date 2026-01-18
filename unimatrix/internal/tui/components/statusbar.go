@@ -27,10 +27,12 @@ func (s StatusBar) View(width int) string {
 
 	keyStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#00FF00")).
+		Background(lipgloss.Color("#333333")).
 		Bold(true)
 
 	descStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#888888"))
+		Foreground(lipgloss.Color("#888888")).
+		Background(lipgloss.Color("#333333"))
 
 	bindings := []struct {
 		key  string

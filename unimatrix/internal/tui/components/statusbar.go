@@ -27,7 +27,7 @@ func (s StatusBar) View(width int) string {
 
 	keyStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#00FF00")).
-		Background(lipgloss.Color("#333333")).
+		Background(lipgloss.Color("#000000")).
 		Bold(true)
 
 	descStyle := lipgloss.NewStyle().

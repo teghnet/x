@@ -8,6 +8,7 @@ import (
 	"log"
 )
 
+// CloseFatal closes the given Closer and calls log.Fatalf on error.
 func CloseFatal(c io.Closer) {
 	err := c.Close()
 	if err != nil {
@@ -15,6 +16,7 @@ func CloseFatal(c io.Closer) {
 	}
 }
 
+// ClosePrint closes the given Closer and logs any error without terminating.
 func ClosePrint(c io.Closer) {
 	err := c.Close()
 	if err != nil {

@@ -9,6 +9,9 @@ import (
 	"path/filepath"
 )
 
+// AppConfig returns the configuration directory path for the given app.
+// It checks for local dev directories (.local or .<appName>) first,
+// then falls back to the system config directory (~/.config/<appName>).
 func AppConfig(appName string) string {
 	if appName == "" {
 		panic("appName must be non-empty")
@@ -34,6 +37,9 @@ func AppConfig(appName string) string {
 	return filepath.Join(dir, appName)
 }
 
+// AppCache returns the cache directory path for the given app.
+// It checks for local dev directories first, then falls back to
+// the system cache directory (~/.cache/<appName>).
 func AppCache(appName string) string {
 	if appName == "" {
 		panic("appName must be non-empty")
@@ -60,6 +66,9 @@ func AppCache(appName string) string {
 
 }
 
+// AppData returns the data directory path for the given app.
+// It checks for local dev directories first, then XDG_DATA_HOME,
+// then falls back to ~/.local/share/<appName>.
 func AppData(appName string) string {
 	if appName == "" {
 		panic("appName must be non-empty")
@@ -91,6 +100,9 @@ func AppData(appName string) string {
 	return filepath.Join(homeDir, ".local", "share", appName)
 }
 
+// AppState returns the state directory path for the given app.
+// It checks for local dev directories first, then XDG_STATE_HOME,
+// then falls back to ~/.local/state/<appName>.
 func AppState(appName string) string {
 	if appName == "" {
 		panic("appName must be non-empty")

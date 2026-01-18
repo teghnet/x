@@ -17,6 +17,7 @@ description: Coding Guidelines
   - Prioritize readability.
   - Prefer standard library over third-party packages.
   - Do not export symbols that are not used beyond the initial package.
+  - Add concise and meaningful comments to all public symbols.
 
 ## Project Structure
 

@@ -8,6 +8,9 @@ import (
 	"path/filepath"
 )
 
+// ProfileConfig returns the config directory for a specific profile.
+// For local dev: .local/<profileName> or .<appName>/<profileName>.
+// For system: ~/.config/<appName>/profiles/<profileName>.
 func ProfileConfig(appName, profileName string) string {
 	if appName == "" {
 		panic("appName must be non-empty")
@@ -33,6 +36,9 @@ func ProfileConfig(appName, profileName string) string {
 	return filepath.Join(AppConfig(appName), "profiles", profileName)
 }
 
+// ProfileCache returns the cache directory for a specific profile.
+// For local dev: .local/<profileName>/cache or .<appName>/<profileName>/cache.
+// For system: ~/.cache/<appName>/profiles/<profileName>.
 func ProfileCache(appName, profileName string) string {
 	if appName == "" {
 		panic("appName must be non-empty")
@@ -55,6 +61,9 @@ func ProfileCache(appName, profileName string) string {
 	return filepath.Join(AppCache(appName), "profiles", profileName)
 }
 
+// ProfileData returns the data directory for a specific profile.
+// For local dev: .local/<profileName>/data or .<appName>/<profileName>/data.
+// For system: ~/.local/share/<appName>/profiles/<profileName>.
 func ProfileData(appName, profileName string) string {
 	if appName == "" {
 		panic("appName must be non-empty")
@@ -77,6 +86,9 @@ func ProfileData(appName, profileName string) string {
 	return filepath.Join(AppData(appName), "profiles", profileName)
 }
 
+// ProfileState returns the state directory for a specific profile.
+// For local dev: .local/<profileName>/state or .<appName>/<profileName>/state.
+// For system: ~/.local/state/<appName>/profiles/<profileName>.
 func ProfileState(appName, profileName string) string {
 	if appName == "" {
 		panic("appName must be non-empty")

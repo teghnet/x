@@ -15,6 +15,7 @@ import (
 	"github.com/teghnet/x/internal"
 )
 
+// FSLoadJSON reads a JSON file and unmarshals it into type T.
 func FSLoadJSON[T any](db fs.FS, name string) (T, error) {
 	var v T
 	f, err := fs.ReadFile(db, name)
@@ -28,6 +29,7 @@ func FSLoadJSON[T any](db fs.FS, name string) (T, error) {
 	return v, nil
 }
 
+// FSJSONList returns an iterator over newline-delimited JSON objects (JSONL).
 func FSJSONList[T any](db fs.FS, name string) iter.Seq2[T, error] {
 	return func(yield func(T, error) bool) {
 		f, err := db.Open(name)
@@ -44,6 +46,8 @@ func FSJSONList[T any](db fs.FS, name string) iter.Seq2[T, error] {
 		}
 	}
 }
+
+// FSJSONArray returns an iterator over elements in a JSON array file.
 func FSJSONArray[T any](db fs.FS, name string) iter.Seq2[T, error] {
 	return func(yield func(T, error) bool) {
 		f, err := db.Open(name)
@@ -96,6 +100,9 @@ func FSGlob(f fs.FS, pattern string) iter.Seq[string] {
 	}
 }
 
+// DynamicWriter returns a writer based on the name.
+// Use "-" or "stdout" for os.Stdout, "=" or "stderr" for os.Stderr.
+// Any other name opens a file with the specified append mode.
 func DynamicWriter(name string, append bool) (io.WriteCloser, error) {
 	if name == "-" || name == "stdout" {
 		return os.Stdout, nil

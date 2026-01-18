@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Paweł Zaremba
+// SPDX-License-Identifier: MIT
+
 package ops
 
 import (

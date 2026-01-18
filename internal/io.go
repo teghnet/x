@@ -1,4 +1,4 @@
-// Copyright (c) $year Paweł Zaremba
+// Copyright (c) 2024-2026 Paweł Zaremba
 // SPDX-License-Identifier: MIT
 
 package internal

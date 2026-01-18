@@ -7,3 +7,4 @@ go.work.sum
 
 # Environment variables
 .env
+unimatrix/unimatrix

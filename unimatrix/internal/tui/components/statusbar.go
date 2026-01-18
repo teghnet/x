@@ -50,6 +50,8 @@ func (s StatusBar) View(width int) string {
 	for i, b := range bindings {
 		if i > 0 {
 			content += descStyle.Render(" • ")
+		} else {
+			content += descStyle.Render(" ")
 		}
 		content += keyStyle.Render(b.key) + descStyle.Render(":"+b.desc)
 	}

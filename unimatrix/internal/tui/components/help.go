@@ -25,22 +25,26 @@ func (h Help) View(width, height int) string {
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("#00FF00")).
 		Padding(1, 2).
-		Width(50).
-		Align(lipgloss.Center)
+		Width(50)
 
 	title := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#00FF00")).
 		Bold(true).
+		Width(46).
+		Align(lipgloss.Center).
 		MarginBottom(1).
 		Render("◼ UNIMATRIX HELP")
 
 	keyStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#00FF00")).
 		Bold(true).
-		Width(12)
+		Align(lipgloss.Left).
+		Width(20)
 
 	descStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#CCCCCC"))
+		Foreground(lipgloss.Color("#CCCCCC")).
+		Align(lipgloss.Right).
+		Width(26)
 
 	bindings := []struct {
 		key  string
@@ -59,13 +63,16 @@ func (h Help) View(width, height int) string {
 		{"q", "Quit"},
 	}
 
-	var lines []string
+	var keys, descs []string
 	for _, b := range bindings {
-		line := keyStyle.Render(b.key) + descStyle.Render(b.desc)
-		lines = append(lines, line)
+		keys = append(keys, b.key)
+		descs = append(descs, b.desc)
 	}
 
-	content := title + "\n\n" + strings.Join(lines, "\n")
+	keyCol := keyStyle.Render(strings.Join(keys, "\n"))
+	descCol := descStyle.Render(strings.Join(descs, "\n"))
+
+	content := title + "\n\n" + lipgloss.JoinHorizontal(lipgloss.Top, keyCol, descCol)
 	helpBox := overlay.Render(content)
 
 	// Center the help box

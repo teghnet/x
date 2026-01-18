@@ -56,7 +56,7 @@ func (s StatusBar) View(width int) string {
 		content = s.message
 	}
 
-	return style.Render(content)
+	return style.Render(" " + content + " ")
 }
 
 // SetMessage sets a custom status message.

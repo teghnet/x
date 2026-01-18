@@ -28,13 +28,13 @@ func NewHeader(profile string) Header {
 func (h Header) View(width int) string {
 	// Borg-themed header styling
 	headerStyle := lipgloss.NewStyle().
-		Background(lipgloss.Color("#004400")).
+		Background(lipgloss.Color("#333333")).
 		Foreground(lipgloss.Color("#00FF00")).
 		Bold(true).
 		Width(width).
 		Padding(0, 1)
 
-	title := "◼ UNIMATRIX"
+	title := " ◼ UNIMATRIX"
 	if h.profile != "" {
 		title += " " + h.profile
 	}
@@ -56,7 +56,7 @@ func (h Header) View(width int) string {
 		gap = 1
 	}
 
-	content := leftSide + lipgloss.NewStyle().Width(gap).Render("") + rightSide
+	content := leftSide + lipgloss.NewStyle().Width(gap).Render("") + rightSide + " "
 
 	return headerStyle.Render(content)
 }

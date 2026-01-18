@@ -1,36 +1,21 @@
-# Unimatrix TUI Implementation
+# Unimatrix TUI - Complete ✓
 
-## Completed ✓
+All 5 phases implemented:
 
-### Phase 1: TUI Foundation
-- [x] `go.mod` - Separate module with Bubble Tea dependencies
-- [x] `main.go` - Entry point with flag parsing
-- [x] `internal/tui/styles.go` - Borg-themed Lipgloss styles
-- [x] `internal/tui/tui.go` - Root Bubble Tea model
-
-### Phase 2: TUI Components
-- [x] `components/tree.go` - Hierarchical file browser
-- [x] `components/preview.go` - File preview pane
-- [x] `components/header.go` - Title bar
-- [x] `components/statusbar.go` - Key bindings
-
-### Phase 3: Domain Models
-- [x] `internal/model/node.go` - File/folder node
-- [x] `internal/model/link.go` - Sync link with strategies
-- [x] `internal/model/profile.go` - Sync profiles
-- [x] `internal/app/app.go` - Config management
-
-### Phase 4: Local Sync
-- [x] `internal/connector/connector.go` - Interface
-- [x] `internal/connector/local.go` - Local filesystem
-- [x] `internal/sync/engine.go` - Sync engine
-
-## Next: Phase 5
-- [ ] Notion connector
-- [ ] Google Drive connector
-- [ ] Obsidian vault support
+| Phase | Package | Status |
+|-------|---------|--------|
+| 1-2 | `internal/tui/` | ✓ Bubble Tea UI |
+| 3 | `internal/model/`, `internal/app/` | ✓ Domain models |
+| 4 | `internal/connector/local.go`, `internal/sync/` | ✓ Local sync |
+| 5 | `notion.go`, `obsidian.go`, `gdrive.go` | ✓ External connectors |
 
 ## Run
 ```bash
 go -C unimatrix run .
 ```
+
+## Connectors
+- **Local**: Filesystem operations
+- **Notion**: `NOTION_API_TOKEN` env var
+- **Google Drive**: `GDRIVE_ACCESS_TOKEN` env var
+- **Obsidian**: Vault with frontmatter + backlinks

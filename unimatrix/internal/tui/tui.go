@@ -22,6 +22,7 @@ type Model struct {
 	tree      components.Tree
 	preview   components.Preview
 	statusbar components.StatusBar
+	help      components.Help
 
 	// State
 	focusedPane Pane
@@ -45,6 +46,7 @@ func New(profile string) Model {
 		tree:        components.NewTree(),
 		preview:     components.NewPreview(),
 		statusbar:   components.NewStatusBar(),
+		help:        components.NewHelp(),
 	}
 }
 
@@ -66,9 +68,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "ctrl+c":
 			return m, tea.Quit
 		case "tab":
-			m.focusedPane = (m.focusedPane + 1) % 2
-		case "?":
+			if !m.showHelp {
+				m.focusedPane = (m.focusedPane + 1) % 2
+			}
+		case "?", "esc":
 			m.showHelp = !m.showHelp
+			return m, nil
+		}
+
+		// Don't delegate keys when help is showing
+		if m.showHelp {
+			return m, nil
 		}
 
 		// Delegate to focused pane
@@ -106,7 +116,14 @@ func (m Model) View() string {
 	content := lipgloss.JoinHorizontal(lipgloss.Top, treeView, previewView)
 
 	// Stack vertically
-	return lipgloss.JoinVertical(lipgloss.Left, header, content, statusbar)
+	mainView := lipgloss.JoinVertical(lipgloss.Left, header, content, statusbar)
+
+	// Show help overlay if enabled
+	if m.showHelp {
+		return m.help.View(m.width, m.height)
+	}
+
+	return mainView
 }
 
 func (m Model) updateLayout() Model {

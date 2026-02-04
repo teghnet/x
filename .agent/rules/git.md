@@ -1,10 +1,8 @@
 ---
-trigger: always_on
-glob:
-description:
+trigger: model_decision
+description: when making git commits
 ---
 
-- Commit changes to git after each step.
 - Use `--no-gpg-sign` to avoid GPG errors.
 - Use a meaningful commit message. 
-  - Prepend commit messages with :robot: icon 
+- Prepend commit messages with :robot: icon

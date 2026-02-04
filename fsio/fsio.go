@@ -15,7 +15,7 @@ import (
 	"github.com/teghnet/x/internal"
 )
 
-// FSLoadJSON reads a JSON file and unmarshals it into type T.
+// FSLoadJSON reads a JSON file and unmarshalls it into type T.
 func FSLoadJSON[T any](db fs.FS, name string) (T, error) {
 	var v T
 	f, err := fs.ReadFile(db, name)
@@ -90,7 +90,8 @@ func FSGlob(f fs.FS, pattern string) iter.Seq[string] {
 	return func(yield func(string) bool) {
 		matches, err := fs.Glob(f, pattern)
 		if err != nil {
-			panic(fmt.Errorf("fsio.FSGlob: %w", err))
+			log.Printf("fsio.FSGlob: failed to drop leading array token: %v", err)
+			return
 		}
 		for _, match := range matches {
 			if !yield(match) {

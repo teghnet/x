@@ -63,7 +63,6 @@ func AppCache(appName string) string {
 		panic(fmt.Sprintf("unable to determine app cache directory: %v", err))
 	}
 	return filepath.Join(dir, appName)
-
 }
 
 // AppData returns the data directory path for the given app.
@@ -89,6 +88,9 @@ func AppData(appName string) string {
 
 	dir := os.Getenv("XDG_DATA_HOME")
 	if dir != "" {
+		if !filepath.IsAbs(dir) {
+			panic("path in $XDG_DATA_HOME is relative")
+		}
 		return filepath.Join(dir, appName)
 	}
 
@@ -123,6 +125,9 @@ func AppState(appName string) string {
 
 	dir := os.Getenv("XDG_STATE_HOME")
 	if dir != "" {
+		if !filepath.IsAbs(dir) {
+			panic("path in $XDG_STATE_HOME is relative")
+		}
 		return filepath.Join(dir, appName)
 	}
 

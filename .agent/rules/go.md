@@ -1,7 +1,6 @@
 ---
-trigger: always_on
-glob:
-description: Coding Guidelines
+trigger: model_decision
+description: Go Language Coding Guidelines
 ---
 
 # Coding Guidelines
@@ -25,6 +24,7 @@ description: Coding Guidelines
 
 - All source files should be located in the `internal` directory.
 - Use `go mod` to manage dependencies.
+- Ask where to put `main` package. 
 
 ## Testing Guidelines
 
@@ -39,12 +39,14 @@ description: Coding Guidelines
 
 - **Coverage**:
   - Test constructors (`New...`).
-  - Test serialization/deserialization cycles (`Save` then `Load`).
+  - Test serialization/deserialization cycles.
 
 - **Build & Run**: 
-  - If you want to test the application locally, use `go run`.
-  - If you want to only check if the code compiles, use `go build`.
+  - When testing the application locally, use `go run`.
+  - When checking for compilation errors, use `go build`.
     - Never persist the built binary to VCS (e.g., git).
+    - Delete the binary after finished work.
+  - When working with a Go submodule (i.e., a separate `go.mod` in a subdirectory), use `go -C <subdir>` to run Go in that subdirectory.
   - The application is not meant to be installed globally.
     - Never run `go install` on the project (i.e., no `go install .`).
     - However, you can `go install <some needed app>` if you need a specific app locally.
@@ -53,15 +55,17 @@ description: Coding Guidelines
 ## Architecture
  
 - **Separation of Concerns**:
-  - **Single Responsibility Packages**: Packages should be scoped to a single domain or technical concern. Avoid "god packages" that mix unrelated functionalities.
-  - **Presentation vs. Business Logic**: The User Interface layer must focus solely on rendering state and capturing user input. It should not perform business rules, data persistence, or external communication directly.
-  - **Configuration Independence**: Configuration logic (path resolution, environment parsing) must be isolated. Components should have their configuration injected rather than deriving it themselves.
-  - **Explicit Dependencies**: Components should define their dependencies via their constructor signatures. Avoid hidden dependencies on global state.
-  - **Event-Driven Decoupling**: Use events or callbacks for communication between layers. Low-level components should remain unaware of the larger application context.
+- **Single Responsibility Packages**: Packages should be scoped to a single domain or technical concern. Avoid "god packages" that mix unrelated functionalities.
+- **Presentation vs. Business Logic**: The User Interface layer must focus solely on rendering state and capturing user input. It should not perform business rules, data persistence, or external communication directly.
+- **Configuration Independence**: Configuration logic (path resolution, environment parsing) must be isolated. Components should have their configuration injected rather than deriving it themselves.
+- **Explicit Dependencies**: Components should define their dependencies via their constructor signatures. Avoid hidden dependencies on global state.
+- **Event-Driven Decoupling**: Use events or callbacks for communication between layers. Low-level components should remain unaware of the larger application context.
+- **Logging**: Prefer structured logging (`slog`) over standard logging (`log`).
+- **Dependency Injection**:.
 
 ## Development Workflow
 
 - **Atomic Commits**:
   - Work in small, logical steps (e.g., "Step 1: Create the data model," "Step 2: Implement the API endpoint").
+  - Commit changes after every step.
   - Aim to keep functions and files focused.
-

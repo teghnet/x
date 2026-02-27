@@ -1,0 +1,16 @@
+/.cache/
+/.config/
+/.data/
+/.state/
+
+/.local/
+
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Environment variables
+.env

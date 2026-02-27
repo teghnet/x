@@ -11,7 +11,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/teghnet/x/internal"
+	"github.com/teghnet/x"
 	"github.com/teghnet/x/osio"
 )
 
@@ -25,13 +25,13 @@ func XMLStats(args []string) error {
 	if err != nil {
 		return err
 	}
-	defer internal.ClosePrint(r)
+	defer x.ClosePrint(r)
 
 	w, err := osio.DynamicWriter(*o, false)
 	if err != nil {
 		return err
 	}
-	defer internal.ClosePrint(w)
+	defer x.ClosePrint(w)
 
 	counter := make(map[string]int64)
 	dicts := make(map[string][]string)
@@ -90,13 +90,13 @@ func XMLPassthrough(args []string) error {
 	if err != nil {
 		return err
 	}
-	defer internal.ClosePrint(r)
+	defer x.ClosePrint(r)
 
 	w, err := osio.DynamicWriter(*o, false)
 	if err != nil {
 		return err
 	}
-	defer internal.ClosePrint(w)
+	defer x.ClosePrint(w)
 
 	return osio.TrimXML(r, w)
 }

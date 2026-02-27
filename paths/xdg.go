@@ -1,12 +1,10 @@
 // Copyright (c) 2026 Paweł Zaremba
 // SPDX-License-Identifier: MIT
 
-package internal
+package paths
 
 import (
 	"log"
-
-	"github.com/teghnet/x/paths"
 )
 
 // XDG Base Directory paths
@@ -31,18 +29,18 @@ type XDG struct {
 
 func NewXDG(app string, mkLocalUnlessDefaultExist bool) XDG {
 	if mkLocalUnlessDefaultExist {
-		errLog(paths.MkLocalApp(app))
-		errLog(paths.MkLocalAppConfig(app))
-		errLog(paths.MkLocalAppData(app))
-		errLog(paths.MkLocalAppCache(app))
-		errLog(paths.MkLocalAppState(app))
+		errLog(MkLocalApp(app))
+		errLog(MkLocalAppConfig(app))
+		errLog(MkLocalAppData(app))
+		errLog(MkLocalAppCache(app))
+		errLog(MkLocalAppState(app))
 	}
 	return XDG{
-		App:        paths.App(app),
-		ConfigHome: paths.AppConfig(app),
-		DataHome:   paths.AppData(app),
-		CacheHome:  paths.AppCache(app),
-		StateHome:  paths.AppState(app),
+		App:        App(app),
+		ConfigHome: AppConfig(app),
+		DataHome:   AppData(app),
+		CacheHome:  AppCache(app),
+		StateHome:  AppState(app),
 	}
 }
 

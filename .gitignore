@@ -1,9 +1,10 @@
+/.idea/
+/.local/
+
 /.cache/
 /.config/
 /.data/
 /.state/
-
-/.local/
 
 # Dependency directories
 vendor/

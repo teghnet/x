@@ -1,7 +1,7 @@
-// Copyright (c) 2024-2026 Paweł Zaremba
+// Copyright (c) 2026 Paweł Zaremba
 // SPDX-License-Identifier: MIT
 
-package internal
+package x
 
 import (
 	"io"

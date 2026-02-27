@@ -5,10 +5,13 @@ package fsio
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"io/fs"
 	"iter"
+	"log"
 
-	internal2 "github.com/teghnet/x/internal"
+	"github.com/teghnet/x"
 )
 
 // JSON reads a JSON file and unmarshalls it into type T.
@@ -29,7 +32,7 @@ func JSONList[T any](db fs.FS, name string) iter.Seq2[T, error] {
 			yield(*new(T), err)
 			return
 		}
-		defer internal2.ClosePrint(f)
+		defer x.ClosePrint(f)
 		dec := json.NewDecoder(f)
 		for dec.More() {
 			var v T
@@ -48,9 +51,9 @@ func JSONArray[T any](db fs.FS, name string) iter.Seq2[T, error] {
 			yield(*new(T), err)
 			return
 		}
-		defer internal2.ClosePrint(f)
+		defer x.ClosePrint(f)
 		dec := json.NewDecoder(f)
-		if err = internal2.DropToken(dec, '['); err != nil {
+		if err = DropToken(dec, '['); err != nil {
 			yield(*new(T), err)
 			return
 		}
@@ -60,9 +63,52 @@ func JSONArray[T any](db fs.FS, name string) iter.Seq2[T, error] {
 				return
 			}
 		}
-		if err = internal2.DropToken(dec, ']'); err != nil {
+		if err = DropToken(dec, ']'); err != nil {
 			yield(*new(T), err)
 			return
+		}
+	}
+}
+
+func DropToken(dec *json.Decoder, r json.Delim) error {
+	t, err := dec.Token()
+	if err != nil {
+		return fmt.Errorf("failed to read token: %w", err)
+	}
+	if t.(json.Delim) != r {
+		return fmt.Errorf("expected '%s' at the end, got %v", r, t)
+	}
+	return nil
+}
+
+func DecArray[T any](f io.Reader) iter.Seq2[T, error] {
+	return func(yield func(T, error) bool) {
+		dec := json.NewDecoder(f)
+		if err := DropToken(dec, '['); err != nil {
+			log.Printf("failed to drop leading array token: %v", err)
+			return
+		}
+		for dec.More() {
+			var v T
+			if !yield(v, dec.Decode(&v)) {
+				return
+			}
+		}
+		if err := DropToken(dec, ']'); err != nil {
+			log.Printf("failed to drop trailing array token: %v", err)
+			return
+		}
+	}
+}
+
+func DecList[T any](f io.Reader) iter.Seq2[T, error] {
+	return func(yield func(T, error) bool) {
+		dec := json.NewDecoder(f)
+		for dec.More() {
+			var v T
+			if !yield(v, dec.Decode(&v)) {
+				return
+			}
 		}
 	}
 }

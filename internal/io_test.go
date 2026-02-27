@@ -7,7 +7,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/teghnet/x/internal"
+	"github.com/teghnet/x"
 )
 
 // mockCloser is a mock implementation of io.Closer for testing.
@@ -22,17 +22,17 @@ func (m *mockCloser) Close() error {
 func TestCloseFatal_Success(t *testing.T) {
 	m := &mockCloser{err: nil}
 	// CloseFatal should not panic when Close() returns nil
-	internal.CloseFatal(m)
+	x.CloseFatal(m)
 }
 
 func TestClosePrint_Success(t *testing.T) {
 	m := &mockCloser{err: nil}
 	// ClosePrint should not panic when Close() returns nil
-	internal.ClosePrint(m)
+	x.ClosePrint(m)
 }
 
 func TestClosePrint_Error(t *testing.T) {
 	m := &mockCloser{err: errors.New("close error")}
 	// ClosePrint should log but not panic when Close() returns an error
-	internal.ClosePrint(m)
+	x.ClosePrint(m)
 }

@@ -6,6 +6,7 @@ package paths
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 )
 
@@ -160,14 +161,26 @@ func mkLocalDir(app, dir string) error {
 	if ok {
 		return nil
 	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
 	if dir == "" {
 		if wdIsHome() {
 			return fmt.Errorf("cannot create local `.%s` directory in $HOME", app)
 		}
-		return os.MkdirAll(filepath.Join("."+app), 0700)
+		d := filepath.Join(wd, ".local")
+		if info, err := os.Stat(d); err == nil && info.IsDir() {
+			return os.MkdirAll(path.Join(d, app), 0700)
+		}
+		return os.MkdirAll(filepath.Join(wd, "."+app), 0700)
 	}
 	if wdIsHome() {
 		return fmt.Errorf("cannot create local `.%s/%s` directory in $HOME", dir, app)
 	}
-	return os.MkdirAll(filepath.Join("."+dir, app), 0700)
+	d := filepath.Join(wd, ".local", app)
+	if info, err := os.Stat(d); err == nil && info.IsDir() {
+		return os.MkdirAll(path.Join(d, dir), 0700)
+	}
+	return os.MkdirAll(filepath.Join(wd, "."+dir, app), 0700)
 }

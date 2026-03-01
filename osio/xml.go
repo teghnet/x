@@ -13,30 +13,58 @@ import (
 	"iter"
 	"log"
 	"log/slog"
+	"regexp"
 	"strings"
 )
 
-func TrimXML(r io.Reader, w io.Writer) (err error) {
+func TrimHTML(r io.Reader, w io.Writer) (err error) {
+	return TrimXML(r, w, true)
+}
+func TrimXML(r io.Reader, w io.Writer, asHTML bool) (err error) {
 	prevElemType := ""
 	var xpath []string
-	for t := range tokens(xml.NewDecoder(r)) {
-		switch e := t.(type) {
+	dec := xml.NewDecoder(r)
+	if asHTML {
+		dec.Strict = false
+		dec.AutoClose = xml.HTMLAutoClose
+		dec.Entity = xml.HTMLEntity
+	}
+	for t := range tokens(dec) {
+		switch el := t.(type) {
 		case xml.ProcInst:
-			_, err = fmt.Fprintf(w, "<?%s %s?>\n", e.Target, e.Inst)
+			_, err = fmt.Fprintf(w, "<?%s %s?>\n", el.Target, el.Inst)
 		case xml.Directive:
-			_, err = fmt.Fprintf(w, "!%s\n", e)
+			_, err = fmt.Fprintf(w, "!%s\n", el)
 		case xml.Comment:
-			_, err = fmt.Fprintf(w, "<!--%s-->\n", e)
+			_, err = fmt.Fprintf(w, "<!--%s-->\n", el)
 		case xml.StartElement:
-			err = fPrint(w, xpath, prevElemType == "xml.StartElement" || prevElemType == "xml.EndElement", e, se)
-			xpath = append(xpath, e.Name.Local)
+			// render start element
+			if prevElemType == "xml.StartElement" || prevElemType == "xml.EndElement" {
+				if _, err = fmt.Fprint(w, "\n", strings.Repeat("\t", len(xpath))); err != nil {
+					return err
+				}
+			}
+			_, err = fmt.Fprint(w, startElement(el, len(xpath), strings.TrimSpace, html.EscapeString)...)
+
+			// increase nesting level
+			xpath = append(xpath, el.Name.Local)
 		case xml.EndElement:
+			// decrease nesting level
 			xpath = xpath[:len(xpath)-1]
-			err = fPrint(w, xpath, prevElemType == "xml.StartElement" || prevElemType == "xml.EndElement", e, ee)
+			// render end element
+			if prevElemType == "xml.StartElement" || prevElemType == "xml.EndElement" {
+				if _, err = fmt.Fprint(w, "\n", strings.Repeat("\t", len(xpath))); err != nil {
+					return err
+				}
+			}
+			if el.Name.Space != "" {
+				el.Name.Space += ":"
+			}
+			_, err = fmt.Fprint(w, []any{"</", el.Name.Space, el.Name.Local, ">"}...)
 		case xml.CharData:
-			err = xml.EscapeText(w, e)
+			err = xml.EscapeText(w, bytes.TrimSpace(reSpaces.ReplaceAll(el, []byte(" "))))
 		default:
-			log.Printf("%T", e)
+			log.Printf("%T", el)
 		}
 		if err != nil {
 			return err
@@ -44,6 +72,16 @@ func TrimXML(r io.Reader, w io.Writer) (err error) {
 		prevElemType = fmt.Sprintf("%T", t)
 	}
 	return nil
+}
+
+var reSpaces = regexp.MustCompile(`\s+`)
+
+func NormalizeWhitespace(input string) string {
+	// \s matches any whitespace character (space, tab, newline)
+	// + matches one or more of them
+	re := regexp.MustCompile(`\s+`)
+	// Replace all matches with a single space and trim the edges
+	return strings.TrimSpace(re.ReplaceAllString(input, " "))
 }
 func XMLDicts(r io.Reader) iter.Seq2[string, string] {
 	var xpath []string
@@ -65,35 +103,21 @@ func XMLDicts(r io.Reader) iter.Seq2[string, string] {
 	}
 }
 
-func fPrint[T xml.StartElement | xml.EndElement](w io.Writer, xp []string, prependNewLine bool, e T, f func(T, []string) []any) (err error) {
-	if prependNewLine {
-		if _, err = fmt.Fprint(w, "\n", strings.Repeat("\t", len(xp))); err != nil {
-			return err
-		}
+func startElement(el xml.StartElement, level int, fns ...func(string) string) []any {
+	if el.Name.Space != "" {
+		el.Name.Space += ":"
 	}
-	_, err = fmt.Fprint(w, f(e, xp)...)
-	return err
-}
-
-func se(e xml.StartElement, xp []string) []any {
-	if e.Name.Space != "" {
-		e.Name.Space += ":"
-	}
-	ret := []any{"<", e.Name.Space, e.Name.Local}
-	for _, a := range e.Attr {
+	ret := []any{"<", el.Name.Space, el.Name.Local}
+	for _, a := range el.Attr {
 		if a.Name.Space != "" {
 			a.Name.Space += ":"
 		}
-		ret = append(ret, "\n\t", strings.Repeat("\t", len(xp)), a.Name.Space, a.Name.Local, `="`, html.EscapeString(a.Value), `"`)
+		for _, fn := range fns {
+			a.Value = fn(a.Value)
+		}
+		ret = append(ret, "\n", strings.Repeat("\t", level), a.Name.Space, a.Name.Local, `="`, a.Value, `"`)
 	}
 	return append(ret, ">")
-}
-
-func ee(e xml.EndElement, xp []string) []any {
-	if e.Name.Space != "" {
-		e.Name.Space += ":"
-	}
-	return []any{"</", e.Name.Space, e.Name.Local, ">"}
 }
 
 // tokens

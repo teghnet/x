@@ -24,6 +24,11 @@ func JSON[T any](db fs.FS, name string) (T, error) {
 	return v, json.Unmarshal(f, &v)
 }
 
+func ReadJSON[T any](f io.Reader) (T, error) {
+	var v T
+	return v, json.NewDecoder(f).Decode(&v)
+}
+
 // JSONList returns an iterator over newline-delimited JSON objects (JSONL).
 func JSONList[T any](db fs.FS, name string) iter.Seq2[T, error] {
 	return func(yield func(T, error) bool) {
@@ -33,14 +38,24 @@ func JSONList[T any](db fs.FS, name string) iter.Seq2[T, error] {
 			return
 		}
 		defer x.ClosePrint(f)
-		dec := json.NewDecoder(f)
-		for dec.More() {
-			var v T
-			if !yield(v, dec.Decode(&v)) {
-				return
-			}
+		decodeList(json.NewDecoder(f), yield)
+	}
+}
+
+func ReadJSONList[T any](f io.Reader) iter.Seq2[T, error] {
+	return func(yield func(T, error) bool) {
+		decodeList(json.NewDecoder(f), yield)
+	}
+}
+
+func decodeList[T any](dec *json.Decoder, yield func(T, error) bool) bool {
+	for dec.More() {
+		var v T
+		if !yield(v, dec.Decode(&v)) {
+			return false
 		}
 	}
+	return true
 }
 
 // JSONArray returns an iterator over elements in a JSON array file.
@@ -52,25 +67,30 @@ func JSONArray[T any](db fs.FS, name string) iter.Seq2[T, error] {
 			return
 		}
 		defer x.ClosePrint(f)
-		dec := json.NewDecoder(f)
-		if err = DropToken(dec, '['); err != nil {
-			yield(*new(T), err)
-			return
-		}
-		for dec.More() {
-			var v T
-			if !yield(v, dec.Decode(&v)) {
-				return
-			}
-		}
-		if err = DropToken(dec, ']'); err != nil {
-			yield(*new(T), err)
-			return
-		}
+		decodeArray(json.NewDecoder(f), yield)
+	}
+}
+func ReadJSONArray[T any](f io.Reader) iter.Seq2[T, error] {
+	return func(yield func(T, error) bool) {
+		decodeArray(json.NewDecoder(f), yield)
 	}
 }
 
-func DropToken(dec *json.Decoder, r json.Delim) error {
+func decodeArray[T any](dec *json.Decoder, yield func(T, error) bool) {
+	if err := dropToken(dec, '['); err != nil {
+		log.Printf("failed to drop leading array token: %v", err)
+		return
+	}
+	if !decodeList(dec, yield) {
+		return
+	}
+	if err := dropToken(dec, ']'); err != nil {
+		log.Printf("failed to drop trailing array token: %v", err)
+		return
+	}
+}
+
+func dropToken(dec *json.Decoder, r json.Delim) error {
 	t, err := dec.Token()
 	if err != nil {
 		return fmt.Errorf("failed to read token: %w", err)
@@ -79,36 +99,4 @@ func DropToken(dec *json.Decoder, r json.Delim) error {
 		return fmt.Errorf("expected '%s' at the end, got %v", r, t)
 	}
 	return nil
-}
-
-func DecArray[T any](f io.Reader) iter.Seq2[T, error] {
-	return func(yield func(T, error) bool) {
-		dec := json.NewDecoder(f)
-		if err := DropToken(dec, '['); err != nil {
-			log.Printf("failed to drop leading array token: %v", err)
-			return
-		}
-		for dec.More() {
-			var v T
-			if !yield(v, dec.Decode(&v)) {
-				return
-			}
-		}
-		if err := DropToken(dec, ']'); err != nil {
-			log.Printf("failed to drop trailing array token: %v", err)
-			return
-		}
-	}
-}
-
-func DecList[T any](f io.Reader) iter.Seq2[T, error] {
-	return func(yield func(T, error) bool) {
-		dec := json.NewDecoder(f)
-		for dec.More() {
-			var v T
-			if !yield(v, dec.Decode(&v)) {
-				return
-			}
-		}
-	}
 }

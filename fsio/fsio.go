@@ -4,9 +4,12 @@
 package fsio
 
 import (
+	"errors"
 	"io/fs"
 	"iter"
 	"log/slog"
+	"os"
+	"path"
 )
 
 // Glob is a utility function that returns an iterator over files matching
@@ -24,4 +27,12 @@ func Glob(f fs.FS, pattern string) iter.Seq[string] {
 			}
 		}
 	}
+}
+
+func Remove(dir, pattern string) error {
+	var err error
+	for name := range Glob(os.DirFS(dir), pattern) {
+		err = errors.Join(os.Remove(path.Join(dir, name)))
+	}
+	return err
 }

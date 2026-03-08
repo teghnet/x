@@ -5,6 +5,7 @@ package paths
 
 import (
 	"log"
+	"path"
 )
 
 // XDG Base Directory paths
@@ -25,6 +26,10 @@ type XDG struct {
 	// but isn't a configuration or "data" in the traditional sense.
 	// .local/state or $XDG_STATE_HOME/<app> or ~/.local/state/<app>
 	StateHome string
+}
+
+func (x XDG) Cache(elems ...string) string {
+	return path.Join(append([]string{x.CacheHome}, elems...)...)
 }
 
 func NewXDG(app string, mkLocalUnlessDefaultExist bool) XDG {

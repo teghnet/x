@@ -24,9 +24,17 @@ func JSON[T any](db fs.FS, name string) (T, error) {
 	return v, json.Unmarshal(f, &v)
 }
 
-func ReadJSON[T any](f io.Reader) (T, error) {
+func ReadJSON[T any](r io.Reader) (T, error) {
 	var v T
-	return v, json.NewDecoder(f).Decode(&v)
+	return v, json.NewDecoder(r).Decode(&v)
+}
+func WriteJSON[T any](w io.Writer, v T) error {
+	return json.NewEncoder(w).Encode(&v)
+}
+func WritePrettyJSON[T any](w io.Writer, v T) error {
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	return enc.Encode(v)
 }
 
 // JSONList returns an iterator over newline-delimited JSON objects (JSONL).

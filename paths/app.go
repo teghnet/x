@@ -72,7 +72,7 @@ func AppData(app string) string {
 
 	if dir := os.Getenv("XDG_DATA_HOME"); dir != "" {
 		if !filepath.IsAbs(dir) {
-			panic("path in $XDG_DATA_HOME is relative")
+			panic("path in XDG_DATA_HOME is relative")
 		}
 		return filepath.Join(dir, app)
 	}
@@ -98,7 +98,7 @@ func AppState(app string) string {
 
 	if dir := os.Getenv("XDG_STATE_HOME"); dir != "" {
 		if !filepath.IsAbs(dir) {
-			panic("path in $XDG_STATE_HOME is relative")
+			panic("path in XDG_STATE_HOME is relative")
 		}
 		return filepath.Join(dir, app)
 	}

@@ -15,7 +15,7 @@ func DynamicReader(name string) (io.ReadCloser, error) {
 		if hasStdin() {
 			return os.Stdin, nil
 		}
-		panic("name must be non-empty")
+		panic("expected stdin data because file name is empty")
 	}
 	if name == "-" || name == "stdin" {
 		return os.Stdin, nil

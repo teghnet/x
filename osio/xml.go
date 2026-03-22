@@ -17,9 +17,6 @@ import (
 	"strings"
 )
 
-func TrimHTML(r io.Reader, w io.Writer) (err error) {
-	return TrimXML(r, w, true)
-}
 func TrimXML(r io.Reader, w io.Writer, asHTML bool) (err error) {
 	prevElemType := ""
 	var xpath []string
@@ -41,10 +38,10 @@ func TrimXML(r io.Reader, w io.Writer, asHTML bool) (err error) {
 			// render start element
 			if prevElemType == "xml.StartElement" || prevElemType == "xml.EndElement" {
 				if _, err = fmt.Fprint(w, "\n", strings.Repeat("\t", len(xpath))); err != nil {
-					return err
+					break
 				}
 			}
-			_, err = fmt.Fprint(w, startElement(el, len(xpath), strings.TrimSpace, html.EscapeString)...)
+			_, err = fmt.Fprint(w, startElement(el, len(xpath), strings.TrimSpace, html.EscapeString, NormalizeSpaces)...)
 
 			// increase nesting level
 			xpath = append(xpath, el.Name.Local)
@@ -54,7 +51,7 @@ func TrimXML(r io.Reader, w io.Writer, asHTML bool) (err error) {
 			// render end element
 			if prevElemType == "xml.StartElement" || prevElemType == "xml.EndElement" {
 				if _, err = fmt.Fprint(w, "\n", strings.Repeat("\t", len(xpath))); err != nil {
-					return err
+					break
 				}
 			}
 			if el.Name.Space != "" {
@@ -76,13 +73,10 @@ func TrimXML(r io.Reader, w io.Writer, asHTML bool) (err error) {
 
 var reSpaces = regexp.MustCompile(`\s+`)
 
-func NormalizeWhitespace(input string) string {
-	// \s matches any whitespace character (space, tab, newline)
-	// + matches one or more of them
-	re := regexp.MustCompile(`\s+`)
-	// Replace all matches with a single space and trim the edges
-	return strings.TrimSpace(re.ReplaceAllString(input, " "))
+func NormalizeSpaces(input string) string {
+	return strings.TrimSpace(reSpaces.ReplaceAllString(input, " "))
 }
+
 func XMLDicts(r io.Reader) iter.Seq2[string, string] {
 	var xpath []string
 	return func(yield func(string, string) bool) {
@@ -121,8 +115,7 @@ func startElement(el xml.StartElement, level int, fns ...func(string) string) []
 }
 
 // tokens
-// TODO:
-// [ ] ensure proper handling of namespaces
+// TODO: ensure proper handling of namespaces
 func tokens(dec *xml.Decoder) iter.Seq[xml.Token] {
 	eof := new(io.EOF)
 	var cd xml.CharData

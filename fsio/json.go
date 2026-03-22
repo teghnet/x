@@ -78,6 +78,7 @@ func JSONArray[T any](db fs.FS, name string) iter.Seq2[T, error] {
 		decodeArray(json.NewDecoder(f), yield)
 	}
 }
+
 func ReadJSONArray[T any](f io.Reader) iter.Seq2[T, error] {
 	return func(yield func(T, error) bool) {
 		decodeArray(json.NewDecoder(f), yield)

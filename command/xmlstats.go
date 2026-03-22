@@ -35,7 +35,7 @@ func XMLStats(args []string) error {
 		}
 		counter[k+":"+v]++
 	}
-	fPrint(w, "pole\twartość\tlicznik\n")
+	fPrint(w, "pole;wartość;licznik\n")
 	keys := slices.Collect(maps.Keys(dicts))
 	slices.Sort(keys)
 	for _, k := range keys {
@@ -46,12 +46,12 @@ func XMLStats(args []string) error {
 		if strings.TrimSpace(k) == "" {
 			continue
 		}
-		fPrintf(w, "%s\t\t%d\n", k, len(vals))
+		fPrintf(w, "%s;;%d\n", k, len(vals))
 		for _, v := range vals {
 			// if _, err := strconv.ParseFloat(v, 64); err == nil || reDate.MatchString(v) {
 			// 	continue
 			// }
-			fPrintf(w, "%s\t%s\t%d\n", k, v, counter[k+":"+v])
+			fPrintf(w, "%s;%s;%d\n", k, v, counter[k+":"+v])
 		}
 	}
 	return nil

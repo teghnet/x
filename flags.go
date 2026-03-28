@@ -68,6 +68,11 @@ func Flag[T primitives](p *T, name string, value T, usage string) FlagOption {
 		}
 	}
 }
+func FlagInt(p *int, name string, value int, usage string) FlagOption {
+	return func(flags *flag.FlagSet) {
+		flags.IntVar(p, name, value, usage)
+	}
+}
 
 // FlagText defines a flag with a custom TextMarshaler and TextUnmarshaler to parse and format its value.
 func FlagText(p encoding.TextUnmarshaler, name string, value encoding.TextMarshaler, usage string) FlagOption {

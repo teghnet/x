@@ -21,7 +21,7 @@ import (
 func XMLDicts(r io.Reader) iter.Seq2[string, string] {
 	var xpath []string
 	return func(yield func(string, string) bool) {
-		for t := range tokens(xml.NewDecoder(r)) {
+		for t := range Tokens(xml.NewDecoder(r)) {
 			switch e := t.(type) {
 			case xml.StartElement:
 				xpath = append(xpath, e.Name.Local)
@@ -47,7 +47,7 @@ func TrimXML(r io.Reader, w io.Writer, asHTML bool) (err error) {
 		dec.AutoClose = xml.HTMLAutoClose
 		dec.Entity = xml.HTMLEntity
 	}
-	for t := range tokens(dec) {
+	for t := range Tokens(dec) {
 		switch el := t.(type) {
 		case xml.ProcInst:
 			_, err = fmt.Fprintf(w, "<?%s %s?>\n", el.Target, el.Inst)
@@ -63,7 +63,6 @@ func TrimXML(r io.Reader, w io.Writer, asHTML bool) (err error) {
 				}
 			}
 			_, err = fmt.Fprint(w, startElement(el, "\n"+strings.Repeat("\t", len(xpath)), strings.TrimSpace, html.EscapeString, NormalizeSpaces)...)
-
 			// increase nesting level
 			xpath = append(xpath, el.Name.Local)
 		case xml.EndElement:
@@ -97,7 +96,7 @@ func WriteElements(element string, r io.Reader, w io.Writer) (err error) {
 	name := split[len(split)-1]
 	var enabled bool
 	var xpath []string
-	for t := range tokens(xml.NewDecoder(r)) {
+	for t := range Tokens(xml.NewDecoder(r)) {
 		switch el := t.(type) {
 		case xml.ProcInst:
 			_, err = fPrintF(enabled, w, "<?%s %s?>", el.Target, el.Inst)
@@ -176,9 +175,9 @@ func NormalizeSpaces(input string) string {
 	return strings.TrimSpace(reSpaces.ReplaceAllString(input, " "))
 }
 
-// tokens
+// Tokens
 // TODO: ensure proper handling of namespaces
-func tokens(dec *xml.Decoder) iter.Seq[xml.Token] {
+func Tokens(dec *xml.Decoder) iter.Seq[xml.Token] {
 	eof := new(io.EOF)
 	var cd xml.CharData
 	return func(yield func(xml.Token) bool) {

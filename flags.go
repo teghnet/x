@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Paweł Zaremba
+// SPDX-License-Identifier: MIT
+
 package x
 
 import (
@@ -49,6 +52,8 @@ type primitives interface {
 func Flag[T primitives](p *T, name string, value T, usage string) FlagOption {
 	return func(flags *flag.FlagSet) {
 		switch v := any(p).(type) {
+		case *bool:
+			flags.BoolVar(v, name, (any(value)).(bool), usage)
 		case *int:
 			flags.IntVar(v, name, (any(value)).(int), usage)
 		case *int64:

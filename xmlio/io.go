@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Paweł Zaremba
+// SPDX-License-Identifier: MIT
+
 package xmlio
 
 import (
@@ -15,7 +18,7 @@ func ReadXML[T any](r io.Reader) (T, error) {
 func ReadXMLs[T any](r io.Reader, elementName string) iter.Seq2[T, error] {
 	return func(yield func(T, error) bool) {
 		dec := xml.NewDecoder(r)
-		for t := range osio.Tokens(dec) {
+		for t := range osio.Tokens(dec, false) {
 			switch el := t.(type) {
 			case xml.StartElement:
 				var v T

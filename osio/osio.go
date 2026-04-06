@@ -10,14 +10,9 @@ import (
 
 // DynamicReader returns a reader based on the name.
 // Use "-" or "stdin" for os.Stdin.
+// Empty name will return os.Stdin if it has data.
 func DynamicReader(name string) (io.ReadCloser, error) {
-	if name == "" {
-		if hasStdin() {
-			return os.Stdin, nil
-		}
-		panic("expected stdin data because file name is empty")
-	}
-	if name == "-" || name == "stdin" {
+	if name == "" && hasStdin() || name == "-" || name == "stdin" {
 		return os.Stdin, nil
 	}
 	return os.Open(name)
@@ -37,12 +32,9 @@ func hasStdin() bool {
 
 // DynamicWriter returns a writer based on the name.
 // Use "-" or "stdout" for os.Stdout, "=" or "stderr" for os.Stderr.
-// Any other name opens a file in append mode if enabled.
+// Any other name opens a file in `append` mode if enabled.
 func DynamicWriter(name string, append bool) (io.WriteCloser, error) {
-	if name == "" {
-		panic("name must be non-empty")
-	}
-	if name == "-" || name == "stdout" {
+	if name == "" || name == "-" || name == "stdout" {
 		return os.Stdout, nil
 	}
 	if name == "=" || name == "stderr" {

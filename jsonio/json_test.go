@@ -1,13 +1,11 @@
 // Copyright (c) 2026 Paweł Zaremba
 // SPDX-License-Identifier: MIT
 
-package fsio_test
+package jsonio_test
 
 import (
 	"testing"
 	"testing/fstest"
-
-	"github.com/teghnet/x/fsio"
 )
 
 func TestLoadJSON(t *testing.T) {
@@ -56,7 +54,7 @@ func TestLoadJSON(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := fsio.JSON[testData](tt.fs, tt.fileName)
+			got, err := JSON[testData](tt.fs, tt.fileName)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("JSON() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -88,7 +86,7 @@ func TestJSONList(t *testing.T) {
 	}
 
 	var ids []int
-	for item, err := range fsio.JSONList[item](fs, "items.jsonl") {
+	for item, err := range JSONList[item](fs, "items.jsonl") {
 		if err != nil {
 			t.Fatalf("JSONList() unexpected error: %v", err)
 		}
@@ -118,7 +116,7 @@ func TestJSONArray(t *testing.T) {
 	}
 
 	var items []item
-	for item, err := range fsio.JSONArray[item](fs, "items.json") {
+	for item, err := range JSONArray[item](fs, "items.json") {
 		if err != nil {
 			t.Fatalf("JSONArray() unexpected error: %v", err)
 		}
@@ -159,7 +157,7 @@ func TestJSONArray_Empty(t *testing.T) {
 	}
 
 	var count int
-	for _, err := range fsio.JSONArray[item](fs, "empty.json") {
+	for _, err := range JSONArray[item](fs, "empty.json") {
 		if err != nil {
 			t.Fatalf("JSONArray() unexpected error: %v", err)
 		}

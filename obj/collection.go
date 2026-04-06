@@ -11,7 +11,6 @@ import (
 	"charm.land/log/v2"
 
 	"github.com/teghnet/x"
-	"github.com/teghnet/x/fsio"
 	"github.com/teghnet/x/jsonio"
 )
 
@@ -33,7 +32,7 @@ func (cs *Collection[T]) Load(s string) {
 	cs.Read(file)
 }
 func (cs *Collection[T]) Read(file *os.File) {
-	for cc, err := range fsio.ReadJSONList[T](file) {
+	for cc, err := range jsonio.ReadJSONList[T](file) {
 		if err != nil {
 			log.Warn(err)
 			continue

@@ -23,38 +23,38 @@ func (cs *Collection[T]) Add(c T) {
 	}
 	*cs = append(*cs, c)
 }
-func (cs *Collection[T]) Load(s string) {
+func (cs *Collection[T]) Load(s string) error {
 	file, err := os.Open(s)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer x.ClosePrint(file)
-	cs.Read(file)
+	return cs.Read(file)
 }
-func (cs *Collection[T]) Read(file *os.File) {
+func (cs *Collection[T]) Read(file io.Reader) error {
 	for cc, err := range jsonio.ReadJSONList[T](file) {
 		if err != nil {
-			log.Warn(err)
-			continue
+			return err
 		}
 		cs.Add(cc)
 	}
+	return nil
 }
-func (cs Collection[T]) Store(s string) {
+func (cs Collection[T]) Store(s string) error {
 	file, err := os.Create(s)
 	if err != nil {
 		panic(err)
 	}
 	defer x.ClosePrint(file)
-	cs.Write(file)
+	return cs.Write(file)
 }
-func (cs Collection[T]) Write(w io.Writer) {
+func (cs Collection[T]) Write(w io.Writer) error {
 	var err error
 	for _, cc := range cs {
 		err = jsonio.WritePrettyJSON(w, cc)
 		if err != nil {
-			log.Warn(err)
-			continue
+			return err
 		}
 	}
+	return nil
 }

@@ -51,7 +51,7 @@ func (cs Collection[T]) Store(s string) error {
 func (cs Collection[T]) Write(w io.Writer) error {
 	var err error
 	for _, cc := range cs {
-		err = jsonio.WritePrettyJSON(w, cc)
+		err = jsonio.WriteJSON(w, cc)
 		if err != nil {
 			return err
 		}

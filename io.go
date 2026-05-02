@@ -23,3 +23,8 @@ func ClosePrint(c io.Closer) {
 		log.Printf("could not close: %v", err)
 	}
 }
+func PrintErr(err error) {
+	if err != nil {
+		log.Printf("err: %v", err)
+	}
+}

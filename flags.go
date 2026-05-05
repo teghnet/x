@@ -7,6 +7,7 @@ import (
 	"encoding"
 	"flag"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -45,7 +46,7 @@ func FlagSetErrorHandling(errorHandling flag.ErrorHandling) FlagOption {
 // primitives is a type constraint that holds all primitive types supported by [flag]
 // and time.Duration.
 type primitives interface {
-	bool | int | int64 | uint | uint64 | string | float64 |
+	bool | int | int64 | uint | uint64 | string | float64 | []string |
 		time.Duration
 }
 
@@ -68,15 +69,26 @@ func Flag[T primitives](p *T, name string, value T, usage string) FlagOption {
 			flags.Float64Var(v, name, (any(value)).(float64), usage)
 		case *time.Duration:
 			flags.DurationVar(v, name, (any(value)).(time.Duration), usage)
+		case *[]string:
+			*v = any(value).([]string)
+			flags.Var((*stringSlice)(v), name, usage)
 		default:
 			panic(fmt.Sprintf("unsupported type: %T", v))
 		}
 	}
 }
-func FlagInt(p *int, name string, value int, usage string) FlagOption {
-	return func(flags *flag.FlagSet) {
-		flags.IntVar(p, name, value, usage)
-	}
+
+var _ flag.Value = (*stringSlice)(nil)
+
+type stringSlice []string
+
+func (f *stringSlice) String() string {
+	return fmt.Sprint([]string(*f))
+}
+
+func (f *stringSlice) Set(value string) error {
+	*f = append(*f, strings.Split(value, ",")...)
+	return nil
 }
 
 // FlagText defines a flag with a custom TextMarshaler and TextUnmarshaler to parse and format its value.

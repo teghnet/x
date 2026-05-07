@@ -8,8 +8,8 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/teghnet/x"
 	"github.com/teghnet/x/fsio"
-	"github.com/teghnet/x/osio"
 )
 
 func TestGlob(t *testing.T) {
@@ -80,7 +80,7 @@ func TestDynamicWriter_Stdout(t *testing.T) {
 	tests := []string{"-", "stdout"}
 	for _, name := range tests {
 		t.Run(name, func(t *testing.T) {
-			w, err := osio.DynamicWriter(name, false)
+			w, err := x.DynamicWriter(name, false)
 			if err != nil {
 				t.Fatalf("DynamicWriter() error = %v", err)
 			}
@@ -97,7 +97,7 @@ func TestDynamicWriter_Stderr(t *testing.T) {
 	tests := []string{"=", "stderr"}
 	for _, name := range tests {
 		t.Run(name, func(t *testing.T) {
-			w, err := osio.DynamicWriter(name, false)
+			w, err := x.DynamicWriter(name, false)
 			if err != nil {
 				t.Fatalf("DynamicWriter() error = %v", err)
 			}
@@ -113,7 +113,7 @@ func TestDynamicWriter_File(t *testing.T) {
 	tmpDir := t.TempDir()
 	filePath := tmpDir + "/output.txt"
 
-	w, err := osio.DynamicWriter(filePath, false)
+	w, err := x.DynamicWriter(filePath, false)
 	if err != nil {
 		t.Fatalf("DynamicWriter() error = %v", err)
 	}
@@ -130,7 +130,7 @@ func TestDynamicWriter_FileAppend(t *testing.T) {
 	filePath := tmpDir + "/append.txt"
 
 	// Write first content
-	w1, err := osio.DynamicWriter(filePath, false)
+	w1, err := x.DynamicWriter(filePath, false)
 	if err != nil {
 		t.Fatalf("DynamicWriter() error = %v", err)
 	}
@@ -138,7 +138,7 @@ func TestDynamicWriter_FileAppend(t *testing.T) {
 	w1.Close()
 
 	// Append second content
-	w2, err := osio.DynamicWriter(filePath, true)
+	w2, err := x.DynamicWriter(filePath, true)
 	if err != nil {
 		t.Fatalf("DynamicWriter() append error = %v", err)
 	}
@@ -160,7 +160,7 @@ func TestDynamicWriter_FileTruncate(t *testing.T) {
 	filePath := tmpDir + "/truncate.txt"
 
 	// Write first content
-	w1, err := osio.DynamicWriter(filePath, false)
+	w1, err := x.DynamicWriter(filePath, false)
 	if err != nil {
 		t.Fatalf("DynamicWriter() error = %v", err)
 	}
@@ -168,7 +168,7 @@ func TestDynamicWriter_FileTruncate(t *testing.T) {
 	w1.Close()
 
 	// Truncate and write second content
-	w2, err := osio.DynamicWriter(filePath, false)
+	w2, err := x.DynamicWriter(filePath, false)
 	if err != nil {
 		t.Fatalf("DynamicWriter() truncate error = %v", err)
 	}
@@ -177,7 +177,7 @@ func TestDynamicWriter_FileTruncate(t *testing.T) {
 }
 
 func TestDynamicWriter_InvalidPath(t *testing.T) {
-	_, err := osio.DynamicWriter("/nonexistent/path/to/file.txt", false)
+	_, err := x.DynamicWriter("/nonexistent/path/to/file.txt", false)
 	if err == nil {
 		t.Error("DynamicWriter() expected error for invalid path")
 	}

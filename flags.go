@@ -17,9 +17,6 @@ func FlagsParse(args []string, extras ...FlagOption) error {
 	return flagSet(extras...).Parse(args)
 }
 
-// FlagOption is a function type used to customize a flag.FlagSet during its initialization.
-type FlagOption func(*flag.FlagSet)
-
 // flagSet creates a new flag.FlagSet.
 func flagSet(extras ...FlagOption) *flag.FlagSet {
 	flags := flag.NewFlagSet("", flag.ExitOnError)
@@ -28,6 +25,9 @@ func flagSet(extras ...FlagOption) *flag.FlagSet {
 	}
 	return flags
 }
+
+// FlagOption is a function type used to customize a flag.FlagSet during its initialization.
+type FlagOption func(*flag.FlagSet)
 
 // FlagSetName changes the name in the flag.FlagSet.
 func FlagSetName(name string) FlagOption {
@@ -43,35 +43,32 @@ func FlagSetErrorHandling(errorHandling flag.ErrorHandling) FlagOption {
 	}
 }
 
-// primitives is a type constraint that holds all primitive types supported by [flag]
-// and time.Duration.
-type primitives interface {
-	bool | int | int64 | uint | uint64 | string | float64 | []string |
-		time.Duration
+// flaggables is a type constraint that holds all types supported by [Flag].
+type flaggables interface {
+	bool | int | int64 | uint | uint64 | string | float64 | []string | time.Duration
 }
 
-func Flag[T primitives](p *T, name string, value T, usage string) FlagOption {
+func Flag[T flaggables](p *T, name, usage string) FlagOption {
 	return func(flags *flag.FlagSet) {
 		switch v := any(p).(type) {
 		case *bool:
-			flags.BoolVar(v, name, (any(value)).(bool), usage)
+			flags.BoolVar(v, name, *v, usage)
 		case *int:
-			flags.IntVar(v, name, (any(value)).(int), usage)
+			flags.IntVar(v, name, *v, usage)
 		case *int64:
-			flags.Int64Var(v, name, (any(value)).(int64), usage)
+			flags.Int64Var(v, name, *v, usage)
 		case *uint:
-			flags.UintVar(v, name, (any(value)).(uint), usage)
+			flags.UintVar(v, name, *v, usage)
 		case *uint64:
-			flags.Uint64Var(v, name, (any(value)).(uint64), usage)
+			flags.Uint64Var(v, name, *v, usage)
 		case *string:
-			flags.StringVar(v, name, (any(value)).(string), usage)
+			flags.StringVar(v, name, *v, usage)
 		case *float64:
-			flags.Float64Var(v, name, (any(value)).(float64), usage)
-		case *time.Duration:
-			flags.DurationVar(v, name, (any(value)).(time.Duration), usage)
+			flags.Float64Var(v, name, *v, usage)
 		case *[]string:
-			*v = any(value).([]string)
 			flags.Var((*stringSlice)(v), name, usage)
+		case *time.Duration:
+			flags.DurationVar(v, name, *v, usage)
 		default:
 			panic(fmt.Sprintf("unsupported type: %T", v))
 		}

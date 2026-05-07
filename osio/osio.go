@@ -12,7 +12,13 @@ import (
 // Use "-" or "stdin" for os.Stdin.
 // Empty name will return os.Stdin if it has data.
 func DynamicReader(name string) (io.ReadCloser, error) {
-	if name == "" && hasStdin() || name == "-" || name == "stdin" {
+	if name == "" {
+		if hasStdin() {
+			return os.Stdin, nil
+		}
+		return nil, os.ErrInvalid
+	}
+	if name == "-" || name == "stdin" {
 		return os.Stdin, nil
 	}
 	return os.Open(name)

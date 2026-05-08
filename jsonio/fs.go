@@ -48,7 +48,13 @@ func ArrayFS[T any](fsfs fs.FS, name string) iter.Seq[Result[T]] {
 
 // JSON
 // Deprecated: use ReadFS
-var JSON = ReadFS
+func JSON[T any](fsfs fs.FS, name string) (T, error) {
+	f, err := fsfs.Open(name)
+	if err != nil {
+		return *new(T), err
+	}
+	return Read[T](f)
+}
 
 // JSONList returns an iterator over newline-delimited JSON objects (JSONL).
 // Deprecated: use ListFS

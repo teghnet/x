@@ -81,7 +81,10 @@ func WritePretty[T any](w io.Writer, v T) error {
 
 // ReadJSON
 // Deprecated: use Read.
-var ReadJSON = Read
+func ReadJSON[T any](r io.Reader) (T, error) {
+	var v T
+	return v, json.NewDecoder(r).Decode(&v)
+}
 
 // ReadJSONList returns an iterator over newline-delimited JSON objects (JSONL)
 // from the provided io.Reader.
@@ -122,8 +125,14 @@ func ReadJSONArray[T any](f io.Reader) iter.Seq2[T, error] {
 
 // WriteJSON
 // Deprecated: use Write.
-var WriteJSON = Write
+func WriteJSON[T any](w io.Writer, v T) error {
+	return json.NewEncoder(w).Encode(&v)
+}
 
 // WritePrettyJSON
 // Deprecated: use WritePretty.
-var WritePrettyJSON = WritePretty
+func WritePrettyJSON[T any](w io.Writer, v T) error {
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	return enc.Encode(v)
+}

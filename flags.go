@@ -11,15 +11,24 @@ import (
 	"time"
 )
 
+// FlagsArgs parses command-line arguments and returns the remaining non-flag arguments after parsing.
+// It creates a new FlagSet with the provided options, parses the args, and returns unparsed arguments and any error.
+func FlagsArgs(args []string, extras ...FlagOption) ([]string, error) {
+	extras = append(extras, FlagSetErrorHandling(flag.ContinueOnError))
+	fs := flagSet(extras...)
+	return fs.Args(), fs.Parse(args)
+}
+
 // FlagsParse parses command-line arguments into a flag.FlagSet,
 // applying customizations via provided FlagOption functions.
 func FlagsParse(args []string, extras ...FlagOption) error {
+	extras = append(extras, FlagSetErrorHandling(flag.ContinueOnError))
 	return flagSet(extras...).Parse(args)
 }
 
 // flagSet creates a new flag.FlagSet.
 func flagSet(extras ...FlagOption) *flag.FlagSet {
-	flags := flag.NewFlagSet("", flag.ExitOnError)
+	flags := flag.NewFlagSet("", flag.PanicOnError)
 	for _, e := range extras {
 		e(flags)
 	}

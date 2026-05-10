@@ -15,13 +15,51 @@ type XDG interface {
 	State(...string) string
 }
 
-func NewXDG(app string, mkLocalUnlessDefaultExist bool) XDG {
-	if mkLocalUnlessDefaultExist {
-		errLog(MkLocalApp(app))
-		errLog(MkLocalAppConfig(app))
-		errLog(MkLocalAppData(app))
-		errLog(MkLocalAppCache(app))
-		errLog(MkLocalAppState(app))
+type conf struct {
+	mkCurrentDirs             bool
+	mkLocalUnlessDefaultExist bool
+}
+type ConfOpt func(*conf)
+
+func WithCurrentDirsPreference(v bool) ConfOpt {
+	return func(c *conf) {
+		c.mkCurrentDirs = v
+	}
+}
+func WithLocalDirsPreference(v bool) ConfOpt {
+	return func(c *conf) {
+		c.mkLocalUnlessDefaultExist = v
+	}
+}
+func PreferCurrentDirs() ConfOpt {
+	return func(c *conf) {
+		c.mkCurrentDirs = true
+		c.mkLocalUnlessDefaultExist = false
+	}
+}
+func PreferLocalDirs() ConfOpt {
+	return func(c *conf) {
+		c.mkLocalUnlessDefaultExist = true
+		c.mkCurrentDirs = false
+	}
+}
+
+func NewXDG(app string, opts ...ConfOpt) XDG {
+	c := conf{}
+	for _, opt := range opts {
+		opt(&c)
+	}
+	if c.mkCurrentDirs {
+		errLog(mkCurrentDir(dirConfig))
+		errLog(mkCurrentDir(dirData))
+		errLog(mkCurrentDir(dirCache))
+		errLog(mkCurrentDir(dirState))
+	} else if c.mkLocalUnlessDefaultExist {
+		errLog(mkLocalDir(app))
+		errLog(mkLocalDir(app, dirConfig))
+		errLog(mkLocalDir(app, dirData))
+		errLog(mkLocalDir(app, dirCache))
+		errLog(mkLocalDir(app, dirState))
 	}
 	return xdg{
 		app:        App(app),

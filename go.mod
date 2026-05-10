@@ -2,7 +2,11 @@ module github.com/teghnet/x
 
 go 1.26.3
 
-require charm.land/log/v2 v2.0.0
+require (
+	charm.land/log/v2 v2.0.0
+	github.com/caarlos0/env/v11 v11.4.1
+	github.com/joho/godotenv v1.5.1
+)
 
 require (
 	charm.land/lipgloss/v2 v2.0.3 // indirect

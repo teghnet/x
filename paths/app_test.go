@@ -19,6 +19,7 @@ func Test_localAppDir(t *testing.T) {
 	}
 	t.Cleanup(func() { os.Chdir(origWd) })
 
+	dirsToCreate := []string{".local/app/dir", ".local/dir", ".dir/app", ".app/dir"}
 	tests := []struct {
 		name    string
 		dirs    []string // directories to create relative to tmpDir
@@ -29,50 +30,81 @@ func Test_localAppDir(t *testing.T) {
 	}{
 		{
 			name:    "prefers .local/app/dir",
-			dirs:    []string{".local/myapp/cache", ".local/cache", ".cache"},
-			app:     "myapp",
-			dir:     "cache",
-			wantSfx: filepath.Join(".local", "myapp", "cache"),
+			dirs:    dirsToCreate[0:],
+			app:     "app",
+			dir:     "dir",
+			wantSfx: filepath.Join(".local", "app", "dir"),
 			wantOK:  true,
 		},
 		{
 			name:    "falls back to .local/dir",
-			dirs:    []string{".local/cache", ".cache"},
-			app:     "myapp",
-			dir:     "cache",
-			wantSfx: filepath.Join(".local", "cache"),
+			dirs:    dirsToCreate[1:],
+			app:     "app",
+			dir:     "dir",
+			wantSfx: filepath.Join(".local", "dir"),
 			wantOK:  true,
 		},
 		{
-			name:    "falls back to .dir",
-			dirs:    []string{".cache"},
-			app:     "myapp",
-			dir:     "cache",
-			wantSfx: ".cache",
+			name:    "falls back to .dir/app",
+			dirs:    dirsToCreate[2:],
+			app:     "app",
+			dir:     "dir",
+			wantSfx: filepath.Join(".dir", "app"),
 			wantOK:  true,
 		},
 		{
 			name:    ".app/dir works even at home",
-			dirs:    []string{".myapp/cache"},
-			app:     "myapp",
-			dir:     "cache",
-			wantSfx: filepath.Join(".myapp", "cache"),
+			dirs:    dirsToCreate[3:],
+			app:     "app",
+			dir:     "dir",
+			wantSfx: filepath.Join(".app", "dir"),
 			wantOK:  true,
 		},
 		{
 			name:   "returns false when nothing exists",
 			dirs:   nil,
-			app:    "myapp",
-			dir:    "cache",
+			app:    "app",
+			dir:    "dir",
+			wantOK: false,
+		},
+		// app == "" is a special case.
+		{
+			name:    "no app; prefers .local/app/dir",
+			dirs:    dirsToCreate[0:],
+			app:     "",
+			dir:     "dir",
+			wantSfx: filepath.Join(".local", "dir"),
+			wantOK:  true,
+		},
+		{
+			name:    "no app; falls back to .local/dir",
+			dirs:    dirsToCreate[1:],
+			app:     "",
+			dir:     "dir",
+			wantSfx: filepath.Join(".local", "dir"),
+			wantOK:  true,
+		},
+		{
+			name:    "no app; falls back to .dir",
+			dirs:    dirsToCreate[2:],
+			app:     "",
+			dir:     "dir",
+			wantSfx: filepath.Join(".dir"),
+			wantOK:  true,
+		},
+		{
+			name:   "no app; .dir NOT works at home",
+			dirs:   dirsToCreate[3:],
+			app:    "",
+			dir:    "dir",
 			wantOK: false,
 		},
 		{
-			name:    "empty app",
-			dirs:    []string{".local/cache"},
-			app:     "",
-			dir:     "cache",
-			wantSfx: filepath.Join(".local", "cache"),
-			wantOK:  true,
+			name:   "no app; returns false when nothing exists",
+			dirs:   nil,
+			app:    "",
+			dir:    "dir",
+			wantOK: false,
 		},
 	}
 

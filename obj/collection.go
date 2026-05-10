@@ -23,8 +23,11 @@ func (cs *Collection[T]) Add(c T) {
 	}
 	*cs = append(*cs, c)
 }
-func (cs *Collection[T]) Load(s string) error {
-	file, err := os.Open(s)
+
+type filePath func(...string) string
+
+func (cs *Collection[T]) Load(s filePath) error {
+	file, err := os.Open(s())
 	if err != nil {
 		return err
 	}
@@ -40,8 +43,8 @@ func (cs *Collection[T]) Read(file io.Reader) error {
 	}
 	return nil
 }
-func (cs Collection[T]) Store(s string) error {
-	file, err := os.Create(s)
+func (cs Collection[T]) Store(s filePath) error {
+	file, err := os.Create(s())
 	if err != nil {
 		panic(err)
 	}
@@ -51,7 +54,7 @@ func (cs Collection[T]) Store(s string) error {
 func (cs Collection[T]) Write(w io.Writer) error {
 	var err error
 	for _, cc := range cs {
-		err = jsonio.WriteJSON(w, cc)
+		err = jsonio.Write(w, cc)
 		if err != nil {
 			return err
 		}

@@ -16,6 +16,23 @@ type Result[T any] struct {
 	Err error
 }
 
+func (r Result[T]) Write(w io.Writer) error {
+	if r.Err != nil {
+		return r.Err
+	}
+	return Write(w, r.Val)
+}
+func Write2(w io.Writer, res any) error {
+	r, ok := res.(Result[any])
+	if !ok {
+		return fmt.Errorf("cannot %T as %T", res, r)
+	}
+	if r.Err != nil {
+		return r.Err
+	}
+	return Write(w, r.Val)
+}
+
 func Read[T any](r io.Reader) (T, error) {
 	var v T
 	return v, json.NewDecoder(r).Decode(&v)

@@ -18,10 +18,10 @@ type App struct {
 	PreferWDStore       bool   `env:"PREFER_WD_STORE,unset"`
 	PreferDotLocalStore bool   `env:"PREFER_DOT_LOCAL_STORE,unset"`
 
-	ctx    context.Context
+	context.Context
 	cancel context.CancelCauseFunc
 
-	xdg paths.XDG
+	paths.XDG
 }
 type Option func(*App)
 
@@ -45,8 +45,8 @@ func (a *App) Init(ctx context.Context, opts ...Option) {
 	for _, opt := range opts {
 		opt(a)
 	}
-	a.ctx, a.cancel = context.WithCancelCause(ctx)
-	a.xdg = paths.NewXDG(a.Name,
+	a.Context, a.cancel = context.WithCancelCause(ctx)
+	a.XDG = paths.NewXDG(a.Name,
 		paths.WithCurrentDirsPreference(a.PreferWDStore),
 		paths.WithLocalDirsPreference(a.PreferDotLocalStore),
 	)
@@ -61,26 +61,28 @@ func (a App) ProfileDBFilename() string {
 	return a.Filename(nameProfileDB)
 }
 
-func (a App) Context() context.Context {
-	return a.ctx
-}
-func (a App) Done() <-chan struct{} {
-	return a.ctx.Done()
-}
+// func (a App) Context() context.Context {
+// 	return a.Context
+// }
+
+// func (a App) Done() <-chan struct{} {
+// 	return a.Context.Done()
+// }
+
 func (a App) Close() error {
 	a.cancel(fmt.Errorf("%T closed", a))
 	return nil
 }
 
-func (a App) Config(s ...string) string {
-	return a.xdg.Config(s...)
-}
-func (a App) Data(s ...string) string {
-	return a.xdg.Data(s...)
-}
-func (a App) Cache(s ...string) string {
-	return a.xdg.Cache(s...)
-}
-func (a App) State(s ...string) string {
-	return a.xdg.State(s...)
-}
+// func (a App) Config(s ...string) string {
+// 	return a.XDG.Config(s...)
+// }
+// func (a App) Data(s ...string) string {
+// 	return a.XDG.Data(s...)
+// }
+// func (a App) Cache(s ...string) string {
+// 	return a.XDG.Cache(s...)
+// }
+// func (a App) State(s ...string) string {
+// 	return a.XDG.State(s...)
+// }

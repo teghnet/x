@@ -86,3 +86,16 @@ func (a App) Close() error {
 // func (a App) State(s ...string) string {
 // 	return a.XDG.State(s...)
 // }
+
+func NewDefaultApp(ctx context.Context) (*DefaultApp, error) {
+	app, err := NewConf[DefaultApp]()
+	if err != nil {
+		return nil, err
+	}
+	app.Init(ctx)
+	return app, nil
+}
+
+type DefaultApp struct {
+	App `json:"-" envPrefix:"APP_"`
+}

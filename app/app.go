@@ -4,13 +4,9 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/teghnet/x/paths"
-)
-
-const (
-	nameProfileDB = "profiles.jsonl"
-	nameProfile   = "profile.json"
 )
 
 type App struct {
@@ -18,84 +14,77 @@ type App struct {
 	PreferWDStore       bool   `env:"PREFER_WD_STORE,unset"`
 	PreferDotLocalStore bool   `env:"PREFER_DOT_LOCAL_STORE,unset"`
 
-	context.Context
-	cancel context.CancelCauseFunc
+	xdg paths.XDG
+	ctx context.Context
+	cnc context.CancelCauseFunc
+}
 
-	paths.XDG
-}
-type Option func(*App)
-
-func DefaultName(name string) Option {
-	return func(a *App) {
-		if a.Name == "" {
-			a.Name = name
-		}
-	}
-}
-func OverrideName(name string) Option {
-	return func(a *App) { a.Name = name }
-}
-func WithPreferWDStore(prefer bool) Option {
-	return func(a *App) { a.PreferWDStore = prefer }
-}
-func WithPreferDotLocalStore(prefer bool) Option {
-	return func(a *App) { a.PreferDotLocalStore = prefer }
-}
-func (a *App) Init(ctx context.Context, opts ...Option) {
+func (a *App) Init(opts ...Option) {
 	for _, opt := range opts {
 		opt(a)
 	}
-	a.Context, a.cancel = context.WithCancelCause(ctx)
-	a.XDG = paths.NewXDG(a.Name,
-		paths.WithCurrentDirsPreference(a.PreferWDStore),
-		paths.WithLocalDirsPreference(a.PreferDotLocalStore),
+	if a.ctx == nil {
+		a.ctx = context.Background()
+	}
+	a.ctx, a.cnc = context.WithCancelCause(a.ctx)
+	a.xdg = paths.NewXDG(a.Name,
+		paths.WithPreferWDStore(a.PreferWDStore),
+		paths.WithPreferDotLocalStore(a.PreferDotLocalStore),
 	)
 }
-func (a App) Filename(elem ...string) string {
+
+func (a *App) Filename(elem ...string) string {
 	return strings.Join(append([]string{a.Name}, elem...), "-")
 }
-func (a App) ProfileFilename() string {
-	return a.Filename(nameProfile)
-}
-func (a App) ProfileDBFilename() string {
-	return a.Filename(nameProfileDB)
-}
 
-// func (a App) Context() context.Context {
-// 	return a.Context
-// }
+// [io.Closer]
 
-// func (a App) Done() <-chan struct{} {
-// 	return a.Context.Done()
-// }
-
-func (a App) Close() error {
-	a.cancel(fmt.Errorf("%T closed", a))
+// Close implements [io.Closer]
+func (a *App) Close() error {
+	a.cnc(fmt.Errorf("%T closed", a))
 	return nil
 }
 
-// func (a App) Config(s ...string) string {
-// 	return a.XDG.Config(s...)
-// }
-// func (a App) Data(s ...string) string {
-// 	return a.XDG.Data(s...)
-// }
-// func (a App) Cache(s ...string) string {
-// 	return a.XDG.Cache(s...)
-// }
-// func (a App) State(s ...string) string {
-// 	return a.XDG.State(s...)
-// }
+// [context.Context]
 
-func NewDefaultApp(ctx context.Context) (*DefaultApp, error) {
-	app, err := NewConf[DefaultApp]()
-	if err != nil {
-		return nil, err
-	}
-	app.Init(ctx)
-	return app, nil
+// Deadline implements [context.Context]
+func (a *App) Deadline() (deadline time.Time, ok bool) {
+	return a.ctx.Deadline()
 }
 
-type DefaultApp struct {
-	App `json:"-" envPrefix:"APP_"`
+// Done implements [context.Context]
+func (a *App) Done() <-chan struct{} {
+	return a.ctx.Done()
+}
+
+// Err implements [context.Context]
+func (a *App) Err() error {
+	return a.ctx.Err()
+}
+
+// Value implements [context.Context]
+func (a *App) Value(key any) any {
+	return a.ctx.Value(key)
+}
+
+// [paths.XDG]
+
+// CachePath implements [paths.XDG]
+func (a *App) CachePath(s ...string) string {
+	return a.xdg.CachePath(s...)
+}
+
+// ConfigPath implements [paths.XDG]
+func (a *App) ConfigPath(s ...string) string {
+	return a.xdg.ConfigPath(s...)
+}
+
+// DataPath implements [paths.XDG]
+func (a *App) DataPath(s ...string) string {
+	return a.xdg.DataPath(s...)
+}
+
+// StatePath implements [paths.XDG]
+func (a *App) StatePath(s ...string) string {
+	return a.xdg.StatePath(s...)
 }

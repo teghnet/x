@@ -9,10 +9,10 @@ import (
 )
 
 type XDG interface {
-	Config(...string) string
-	Data(...string) string
-	Cache(...string) string
-	State(...string) string
+	CachePath(...string) string
+	ConfigPath(...string) string
+	DataPath(...string) string
+	StatePath(...string) string
 }
 
 type conf struct {
@@ -21,12 +21,12 @@ type conf struct {
 }
 type ConfOpt func(*conf)
 
-func WithCurrentDirsPreference(v bool) ConfOpt {
+func WithPreferWDStore(v bool) ConfOpt {
 	return func(c *conf) {
 		c.mkCurrentDirs = v
 	}
 }
-func WithLocalDirsPreference(v bool) ConfOpt {
+func WithPreferDotLocalStore(v bool) ConfOpt {
 	return func(c *conf) {
 		c.mkLocalUnlessDefaultExist = v
 	}
@@ -39,8 +39,8 @@ func PreferCurrentDirs() ConfOpt {
 }
 func PreferLocalDirs() ConfOpt {
 	return func(c *conf) {
-		c.mkLocalUnlessDefaultExist = true
 		c.mkCurrentDirs = false
+		c.mkLocalUnlessDefaultExist = true
 	}
 }
 
@@ -50,15 +50,15 @@ func NewXDG(app string, opts ...ConfOpt) XDG {
 		opt(&c)
 	}
 	if c.mkCurrentDirs {
+		errLog(mkCurrentDir(dirCache))
 		errLog(mkCurrentDir(dirConfig))
 		errLog(mkCurrentDir(dirData))
-		errLog(mkCurrentDir(dirCache))
 		errLog(mkCurrentDir(dirState))
 	} else if c.mkLocalUnlessDefaultExist {
 		errLog(mkLocalDir(app))
+		errLog(mkLocalDir(app, dirCache))
 		errLog(mkLocalDir(app, dirConfig))
 		errLog(mkLocalDir(app, dirData))
-		errLog(mkLocalDir(app, dirCache))
 		errLog(mkLocalDir(app, dirState))
 	}
 	return xdg{
@@ -85,28 +85,28 @@ func (x xdg) App(elems ...string) string {
 
 // Config configHome user-specific settings that you would want to preserve or back up.
 // .local/config or $XDG_CONFIG_HOME/<app> or ~/.config/<app>
-func (x xdg) Config(elems ...string) string {
+func (x xdg) ConfigPath(elems ...string) string {
 	return path.Join(append([]string{x.configHome}, elems...)...)
 }
 
 // Data dataHome for persistent data files that the application needs to function.
 // Examples: Game saves, local mail storage, browser extensions, icon sets, and custom fonts.
 // .local/share or $XDG_DATA_HOME/<app> or ~/.local/share/<app>
-func (x xdg) Data(elems ...string) string {
+func (x xdg) DataPath(elems ...string) string {
 	return path.Join(append([]string{x.dataHome}, elems...)...)
 }
 
 // Cache cacheHome non-essential data that can be safely deleted without losing information.
 // Deleting this directory should only result in a slight speed penalty the next time you run the app.
 // .local/chache or $XDG_CACHE_HOME/<app> or ~/.cache/<app>
-func (x xdg) Cache(elems ...string) string {
+func (x xdg) CachePath(elems ...string) string {
 	return path.Join(append([]string{x.cacheHome}, elems...)...)
 }
 
 // State stateHome temporary application state that should persist between restarts
 // but isn't a configuration or "data" in the traditional sense.
 // .local/state or $XDG_STATE_HOME/<app> or ~/.local/state/<app>
-func (x xdg) State(elems ...string) string {
+func (x xdg) StatePath(elems ...string) string {
 	return path.Join(append([]string{x.stateHome}, elems...)...)
 }
 

@@ -8,8 +8,21 @@ import (
 	"fmt"
 	"io"
 	"iter"
-	"log"
+	"os"
+
+	"charm.land/log/v2"
+
+	"github.com/teghnet/x"
 )
+
+func Decode(path string, v any) error {
+	r, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer x.ClosePrint(r)
+	return json.NewDecoder(r).Decode(&v)
+}
 
 type Result[T any] struct {
 	Val T
@@ -22,15 +35,18 @@ func (r Result[T]) Write(w io.Writer) error {
 	}
 	return Write(w, r.Val)
 }
-func Write2(w io.Writer, res any) error {
-	r, ok := res.(Result[any])
-	if !ok {
-		return fmt.Errorf("cannot %T as %T", res, r)
+func Load[T any](path string) (T, error) {
+	r, err := os.Open(path)
+	var v T
+	if err != nil {
+		// if errors.Is(err, os.ErrNotExist) {
+		// 	log.Debug(err)
+		// 	return v, nil
+		// }
+		return v, err
 	}
-	if r.Err != nil {
-		return r.Err
-	}
-	return Write(w, r.Val)
+	defer x.ClosePrint(r)
+	return v, json.NewDecoder(r).Decode(&v)
 }
 
 func Read[T any](r io.Reader) (T, error) {
@@ -82,6 +98,15 @@ func dropToken(dec *json.Decoder, r json.Delim) error {
 		return fmt.Errorf("expected '%s' at the end, got %v", r, t)
 	}
 	return nil
+}
+
+func Store[T any](path string, v T) error {
+	w, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer x.ClosePrint(w)
+	return json.NewEncoder(w).Encode(&v)
 }
 
 func Write[T any](w io.Writer, v T) error {

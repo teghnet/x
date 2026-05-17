@@ -8,7 +8,10 @@ import (
 	"charm.land/log/v2"
 )
 
+// Command represents an executable operation that accepts a context and returns an error.
 type Command func(context.Context) error
+
+// CommandSelector is a function type that selects and returns a [Command] based on a command name and arguments.
 type CommandSelector func(string, []string) Command
 
 // BatchOnce returns the Batch if the first argument is "batch",
@@ -22,6 +25,11 @@ func BatchOnce(args []string, cs CommandSelector) Command {
 	return cs(args[0], args[2:])
 }
 
+// Batch creates a Command that executes multiple commands from a JSON-formatted input file.
+// Each line in the input should be a JSON array of strings representing command arguments.
+// Accepts `-i` flag to specify input file (default: stdin)
+// and `--continue` flag to keep running on errors.
+// Uses the provided CommandSelector to resolve and execute each command from the batch input.
 func Batch(args []string, cs CommandSelector) Command {
 	return func(ctx context.Context) error {
 		inputFile := "-"

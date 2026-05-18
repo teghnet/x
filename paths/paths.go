@@ -1,6 +1,47 @@
 // Copyright (c) 2024-2026 Paweł Zaremba
 // SPDX-License-Identifier: MIT
 
+// Package paths
+//
+// ### User directories
+//
+// - `XDG_CONFIG_HOME`
+//   - Where user-specific configurations should be written (analogous to `/etc`).
+//   - Should default to `$HOME/.config`.
+//
+// - `XDG_CACHE_HOME`
+//   - Where user-specific non-essential (cached) data should be written (analogous to `/var/cache`).
+//   - Should default to `$HOME/.cache`.
+//
+// - `XDG_DATA_HOME`
+//   - Where user-specific data files should be written (analogous to `/usr/share`).
+//   - Should default to `$HOME/.local/share`.
+//
+// - `XDG_STATE_HOME`
+//   - Where user-specific state files should be written (analogous to `/var/lib`).
+//   - Should default to `$HOME/.local/state`.
+//
+// - `XDG_RUNTIME_DIR`
+//   - Used for non-essential, user-specific data files such as sockets, named pipes, etc.
+//   - Not required to have a default value; warnings should be issued if not set or equivalents provided.
+//   - Must be owned by the user with an access mode of `0700`.
+//   - Filesystem fully featured by standards of OS.
+//   - Must be on the local filesystem.
+//   - May be subject to periodic cleanup.
+//   - Modified every 6 hours or set sticky bit if persistence is desired.
+//   - Can only exist for the duration of the user's login.
+//   - Should not store large files as it may be mounted as a tmpfs.
+//   - pam_systemd sets this to `/run/user/$UID`.
+//
+// ### System directories
+//
+// - `XDG_DATA_DIRS`
+//   - List of directories separated by `:` (analogous to `PATH`).
+//   - Should default to `/usr/local/share:/usr/share`.
+//
+// - `XDG_CONFIG_DIRS`
+//   - List of directories separated by `:` (analogous to `PATH`).
+//   - Should default to `/etc/xdg`.
 package paths
 
 import (

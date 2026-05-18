@@ -61,7 +61,7 @@ func hasStdin() bool {
 // DynamicWriter returns a writer based on the name.
 // Use "-" or "stdout" for os.Stdout, "=" or "stderr" for os.Stderr.
 // Any other name opens a file in `append` mode if enabled.
-func DynamicWriter(name string, append bool) (io.WriteCloser, error) {
+func DynamicWriter(name string, appendFlag bool) (io.WriteCloser, error) {
 	if name == "" || name == "-" || name == "stdout" {
 		return os.Stdout, nil
 	}
@@ -69,7 +69,7 @@ func DynamicWriter(name string, append bool) (io.WriteCloser, error) {
 		return os.Stderr, nil
 	}
 	flag := os.O_WRONLY | os.O_CREATE
-	if append {
+	if appendFlag {
 		flag |= os.O_APPEND
 	} else {
 		flag |= os.O_TRUNC

@@ -22,7 +22,7 @@ func BatchOnce(args []string, cs CommandSelector) Command {
 	if args[0] == "batch" {
 		return Batch(args[1:], cs)
 	}
-	return cs(args[0], args[2:])
+	return cs(args[0], args[1:])
 }
 
 // Batch creates a Command that executes multiple commands from a JSON-formatted input file.

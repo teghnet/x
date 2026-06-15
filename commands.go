@@ -12,17 +12,17 @@ import (
 type Command func(context.Context) error
 
 // CommandSelector is a function type that selects and returns a [Command] based on a command name and arguments.
-type CommandSelector func(string, []string) Command
+type CommandSelector func(args []string) Command
 
 // BatchOnce returns the Batch if the first argument is "batch",
 // otherwise it runs the CommandSelector.
 //
 // This is to prevent an infinite batch command loop.
 func BatchOnce(args []string, cs CommandSelector) Command {
-	if args[0] == "batch" {
+	if len(args) > 0 && args[0] == "batch" {
 		return Batch(args[1:], cs)
 	}
-	return cs(args[0], args[1:])
+	return cs(args)
 }
 
 // Batch creates a Command that executes multiple commands from a JSON-formatted input file.
@@ -76,7 +76,7 @@ func batchExec(ctx context.Context, dec *json.Decoder, cs CommandSelector) iter.
 					return
 				}
 			}
-			if !yield(cs(args[0], args[1:])(ctx)) {
+			if !yield(cs(args)(ctx)) {
 				return
 			}
 		}

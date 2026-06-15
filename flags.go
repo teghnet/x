@@ -16,7 +16,8 @@ import (
 func FlagsArgs(args []string, extras ...FlagOption) ([]string, error) {
 	extras = append(extras, FlagSetErrorHandling(flag.ContinueOnError))
 	fs := flagSet(extras...)
-	return fs.Args(), fs.Parse(args)
+	err := fs.Parse(args)
+	return fs.Args(), err
 }
 
 // FlagsParse parses command-line arguments into a flag.FlagSet,

@@ -106,7 +106,9 @@ func Store[T any](path string, v T) error {
 		return err
 	}
 	defer x.ClosePrint(w)
-	return json.NewEncoder(w).Encode(&v)
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	return enc.Encode(&v)
 }
 
 func Write[T any](w io.Writer, v T) error {

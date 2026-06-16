@@ -26,7 +26,7 @@ func (c *Collection[T]) Add(t T) error {
 	*c = append(*c, t)
 	return nil
 }
-func (c *Collection[T]) Add1(t T) {
+func (c *Collection[T]) Put(t T) {
 	if err := c.Add(t); err != nil {
 		if errors.Is(err, errItemExists) {
 			return

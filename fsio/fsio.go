@@ -9,14 +9,13 @@ import (
 	"iter"
 	"log/slog"
 	"os"
-	"path"
 )
 
 // Glob is a utility function that returns an iterator over files matching
 // the given pattern in the provided filesystem.
-func Glob(f fs.FS, pattern string) iter.Seq[string] {
+func Glob(fsys fs.FS, pattern string) iter.Seq[string] {
 	return func(yield func(string) bool) {
-		matches, err := fs.Glob(f, pattern)
+		matches, err := fs.Glob(fsys, pattern)
 		if err != nil {
 			slog.Debug("fsio.Glob: failed resolve pattern", "err", err)
 			return
@@ -29,10 +28,14 @@ func Glob(f fs.FS, pattern string) iter.Seq[string] {
 	}
 }
 
-func Remove(dir, pattern string) error {
-	var err error
-	for name := range Glob(os.DirFS(dir), pattern) {
-		err = errors.Join(os.Remove(path.Join(dir, name)))
+func Remove(fsys fs.FS, pattern string) error {
+	var errs error
+	for name := range Glob(fsys, pattern) {
+		s, err := fs.Lstat(fsys, name)
+		if err != nil {
+			return err
+		}
+		errs = errors.Join(os.Remove(s.Name()))
 	}
-	return err
+	return errs
 }

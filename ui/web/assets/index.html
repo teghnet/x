@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ctld</title>
+<style>
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 2rem; color: #1a1a1a; }
+  h1 { font-size: 1.25rem; }
+  table { border-collapse: collapse; width: 100%; margin-bottom: 2rem; }
+  th, td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid #ddd; }
+  th { color: #555; font-weight: 600; }
+  code { background: #f2f2f2; padding: 0.1rem 0.3rem; border-radius: 3px; }
+  .muted { color: #888; }
+</style>
+</head>
+<body>
+<h1>ctld dashboard</h1>
+<p class="muted">Refreshed <span id="ts">…</span></p>
+
+<h2>Tasks</h2>
+<table id="tasks"><thead><tr><th>Task</th><th>Elapsed</th><th>Output</th></tr></thead><tbody></tbody></table>
+
+<h2>State keys</h2>
+<ul id="keys"></ul>
+
+<script>
+async function refresh() {
+  const [results, state] = await Promise.all([
+    fetch('api/results').then(r => r.json()),
+    fetch('api/state').then(r => r.json()),
+  ]);
+  const tbody = document.querySelector('#tasks tbody');
+  tbody.innerHTML = '';
+  for (const r of results || []) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><code>${r.task}</code></td><td>${r.elapsed_ms} ms</td><td>${r.output ?? ''}</td>`;
+    tbody.appendChild(tr);
+  }
+  const ul = document.querySelector('#keys');
+  ul.innerHTML = '';
+  for (const k of state.keys || []) {
+    const li = document.createElement('li');
+    li.textContent = k;
+    ul.appendChild(li);
+  }
+  document.querySelector('#ts').textContent = new Date().toLocaleTimeString();
+}
+refresh();
+setInterval(refresh, 3000);
+</script>
+</body>
+</html>

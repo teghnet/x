@@ -15,7 +15,7 @@ func XML[T any](fsfs fs.FS, name string) (T, error) {
 	if err != nil {
 		return *new(T), err
 	}
-	return ReadXML[T](f)
+	return Read[T](f)
 }
 
 func XMLs[T any](fsfs fs.FS, name, elementName string) iter.Seq2[T, error] {
@@ -26,6 +26,6 @@ func XMLs[T any](fsfs fs.FS, name, elementName string) iter.Seq2[T, error] {
 			return
 		}
 		defer x.ClosePrint(f)
-		ReadXMLs[T](f, elementName)(yield)
+		ReadAll[T](f, elementName)(yield)
 	}
 }

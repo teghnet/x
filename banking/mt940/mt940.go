@@ -14,7 +14,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/teghnet/x/bankparse"
+	"github.com/teghnet/x/banking"
 )
 
 // Dialect extracts counterparty and description information from a
@@ -24,7 +24,7 @@ type Dialect interface {
 	// ParseTag86 enriches tx from the unstructured raw Tag 86 value. tx has
 	// already been populated from the preceding Field 61 (dates, amount,
 	// type code, statement context).
-	ParseTag86(raw string, tx *bankparse.Transaction) error
+	ParseTag86(raw string, tx *banking.Transaction) error
 }
 
 // tag86FieldRe matches the "?NN" structured subfield markers used by the
@@ -42,7 +42,7 @@ var tag86FieldRe = regexp.MustCompile(`\?(\d{2})`)
 type DefaultDialect struct{}
 
 // ParseTag86 implements Dialect.
-func (DefaultDialect) ParseTag86(raw string, tx *bankparse.Transaction) error {
+func (DefaultDialect) ParseTag86(raw string, tx *banking.Transaction) error {
 	locs := tag86FieldRe.FindAllStringSubmatchIndex(raw, -1)
 	if len(locs) == 0 {
 		tx.Description = strings.TrimSpace(raw)
@@ -95,26 +95,26 @@ func (DefaultDialect) ParseTag86(raw string, tx *bankparse.Transaction) error {
 	return nil
 }
 
-// parser implements bankparse.Parser for MT940 statements.
+// parser implements banking.Parser for MT940 statements.
 type parser struct {
 	dialect Dialect
-	cfg     bankparse.Config
+	cfg     banking.Config
 }
 
-// New creates a bankparse.Parser for MT940 statements, using dialect to
+// New creates a banking.Parser for MT940 statements, using dialect to
 // interpret each transaction's Tag 86. Only the Encoding option is honored;
-// the other bankparse.Config fields don't apply to MT940's fixed grammar.
-func New(dialect Dialect, opts ...bankparse.Option) bankparse.Parser {
-	return &parser{dialect: dialect, cfg: bankparse.NewConfig(opts...)}
+// the other banking.Config fields don't apply to MT940's fixed grammar.
+func New(dialect Dialect, opts ...banking.Option) banking.Parser {
+	return &parser{dialect: dialect, cfg: banking.NewConfig(opts...)}
 }
 
-// Parse implements bankparse.Parser. It streams transactions from every
+// Parse implements banking.Parser. It streams transactions from every
 // statement message in r; MT940 files commonly concatenate several messages
 // (one per account or per day), each terminated by a line containing only
 // "-".
-func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*bankparse.Transaction, error] {
-	return func(yield func(*bankparse.Transaction, error) bool) {
-		decoded, err := bankparse.DecodeReader(r, p.cfg.Encoding)
+func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*banking.Transaction, error] {
+	return func(yield func(*banking.Transaction, error) bool) {
+		decoded, err := banking.DecodeReader(r, p.cfg.Encoding)
 		if err != nil {
 			yield(nil, fmt.Errorf("mt940: %w", err))
 			return
@@ -124,7 +124,7 @@ func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*bankparse.Tr
 			account  string
 			stmtNo   string
 			currency string
-			pending  *bankparse.Transaction
+			pending  *banking.Transaction
 		)
 
 		flushPending := func() bool {
@@ -195,7 +195,7 @@ func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*bankparse.Tr
 					}
 					continue
 				}
-				tx := &bankparse.Transaction{
+				tx := &banking.Transaction{
 					TransactionDate:  t61.EntryDate,
 					BookingDate:      t61.ValueDate,
 					Amount:           t61.Amount,

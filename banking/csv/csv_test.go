@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/teghnet/x/bankparse"
+	"github.com/teghnet/x/banking"
 )
 
-func collect(t *testing.T, p bankparse.Parser, data string) []*bankparse.Transaction {
+func collect(t *testing.T, p banking.Parser, data string) []*banking.Transaction {
 	t.Helper()
-	var txs []*bankparse.Transaction
+	var txs []*banking.Transaction
 	for tx, err := range p.Parse(t.Context(), strings.NewReader(data)) {
 		if err != nil {
 			t.Fatalf("parse: %v", err)
@@ -60,7 +60,7 @@ func TestHappyPath(t *testing.T) {
 func TestDelimiterAndHeaderSkip(t *testing.T) {
 	const data = "date;amount\n2026-02-01;10.00\n"
 	mapper := ColumnMapper{TransactionDateIdx: 0, AmountIdx: 1}
-	p := New(mapper, bankparse.WithDelimiter(';'), bankparse.WithSkipHeaderLines(1))
+	p := New(mapper, banking.WithDelimiter(';'), banking.WithSkipHeaderLines(1))
 	txs := collect(t, p, data)
 	if len(txs) != 1 {
 		t.Fatalf("got %d transactions, want 1", len(txs))
@@ -74,7 +74,7 @@ func TestEncoding(t *testing.T) {
 	// "z\xb9" is "zą" in windows-1250.
 	data := "2026-03-01,10.00,kwota w z\xb9\n"
 	mapper := ColumnMapper{TransactionDateIdx: 0, AmountIdx: 1, DescriptionIndices: []int{2}}
-	p := New(mapper, bankparse.WithEncoding("windows-1250"))
+	p := New(mapper, banking.WithEncoding("windows-1250"))
 	txs := collect(t, p, data)
 	if len(txs) != 1 {
 		t.Fatalf("got %d transactions, want 1", len(txs))
@@ -89,7 +89,7 @@ func TestCustomFn(t *testing.T) {
 	mapper := ColumnMapper{
 		TransactionDateIdx: 0,
 		AmountIdx:          1,
-		CustomFn: func(record []string, tx *bankparse.Transaction) error {
+		CustomFn: func(record []string, tx *banking.Transaction) error {
 			tx.Category = record[2]
 			return nil
 		},

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/teghnet/x/bankparse"
+	"github.com/teghnet/x/banking"
 )
 
 // fixture is a synthetic MT940 document constructed to exercise this
@@ -30,10 +30,10 @@ const fixture = "" +
 	":62F:C260110EUR0,00\r\n" +
 	"-\r\n"
 
-func collect(t *testing.T) []*bankparse.Transaction {
+func collect(t *testing.T) []*banking.Transaction {
 	t.Helper()
 	p := New(DefaultDialect{})
-	var txs []*bankparse.Transaction
+	var txs []*banking.Transaction
 	for tx, err := range p.Parse(t.Context(), strings.NewReader(fixture)) {
 		if err != nil {
 			t.Fatalf("parse: %v", err)
@@ -128,7 +128,7 @@ func TestEntryDateYearRollover(t *testing.T) {
 	const data = ":20:R\r\n:25:ACC\r\n:28C:1\r\n:60F:C251230EUR0,00\r\n" +
 		":61:2512310102D10,00NMSCNONREF\r\n:86:x\r\n:62F:D260102EUR10,00\r\n-\r\n"
 	p := New(DefaultDialect{})
-	var txs []*bankparse.Transaction
+	var txs []*banking.Transaction
 	for tx, err := range p.Parse(t.Context(), strings.NewReader(data)) {
 		if err != nil {
 			t.Fatalf("parse: %v", err)

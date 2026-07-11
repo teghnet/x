@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"a/auth"
-	"a/internal/backoff"
+	"github.com/teghnet/x/auth"
+	"github.com/teghnet/x/internal/backoff"
 )
 
 // fastPolicy retries quickly so tests do not sleep for real.

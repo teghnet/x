@@ -1,4 +1,4 @@
-// Package bankparse provides a unified interface for reading bank statements
+// Package banking provides a unified interface for reading bank statements
 // in disparate formats (CSV, MT940, ...) as a single, denormalized stream of
 // transactions.
 //
@@ -11,7 +11,7 @@
 //   - Denormalized output: Transaction is a flat struct covering every
 //     standard field, plus RawData for whatever doesn't fit.
 //   - Precision: monetary amounts use decimal.Decimal, never float64.
-package bankparse
+package banking
 
 import (
 	"time"

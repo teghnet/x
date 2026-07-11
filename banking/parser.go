@@ -1,4 +1,4 @@
-package bankparse
+package banking
 
 import (
 	"context"

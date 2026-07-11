@@ -13,7 +13,7 @@ import (
 
 	"github.com/govalues/decimal"
 
-	"github.com/teghnet/x/bankparse"
+	"github.com/teghnet/x/banking"
 )
 
 // ColumnMapper defines how a row of CSV translates to a denormalized
@@ -37,33 +37,33 @@ type ColumnMapper struct {
 	// CustomFn runs after the standard mapping above, with the raw record and
 	// the Transaction built so far. It can override or augment any field, and
 	// is the escape hatch for bank-specific quirks that don't fit ColumnMapper.
-	CustomFn func(record []string, tx *bankparse.Transaction) error
+	CustomFn func(record []string, tx *banking.Transaction) error
 }
 
-// parser implements bankparse.Parser for a single bank's CSV export.
+// parser implements banking.Parser for a single bank's CSV export.
 type parser struct {
 	mapper ColumnMapper
-	cfg    bankparse.Config
+	cfg    banking.Config
 }
 
-// New creates a bankparse.Parser for CSV statements shaped as described by
+// New creates a banking.Parser for CSV statements shaped as described by
 // mapper. It panics if mapper.AmountIdx or mapper.TransactionDateIdx is
 // negative, since a parser that can't locate the amount or date column can't
 // do anything useful.
-func New(mapper ColumnMapper, opts ...bankparse.Option) bankparse.Parser {
+func New(mapper ColumnMapper, opts ...banking.Option) banking.Parser {
 	if mapper.AmountIdx < 0 {
 		panic("csv: ColumnMapper.AmountIdx must be set")
 	}
 	if mapper.TransactionDateIdx < 0 {
 		panic("csv: ColumnMapper.TransactionDateIdx must be set")
 	}
-	return &parser{mapper: mapper, cfg: bankparse.NewConfig(opts...)}
+	return &parser{mapper: mapper, cfg: banking.NewConfig(opts...)}
 }
 
-// Parse implements bankparse.Parser.
-func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*bankparse.Transaction, error] {
-	return func(yield func(*bankparse.Transaction, error) bool) {
-		decoded, err := bankparse.DecodeReader(r, p.cfg.Encoding)
+// Parse implements banking.Parser.
+func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*banking.Transaction, error] {
+	return func(yield func(*banking.Transaction, error) bool) {
+		decoded, err := banking.DecodeReader(r, p.cfg.Encoding)
 		if err != nil {
 			yield(nil, fmt.Errorf("csv: %w", err))
 			return
@@ -115,8 +115,8 @@ func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*bankparse.Tr
 }
 
 // mapRow builds a Transaction from a single CSV record according to p.mapper.
-func (p *parser) mapRow(record []string) (*bankparse.Transaction, error) {
-	tx := &bankparse.Transaction{RawData: make(map[string]string, len(record))}
+func (p *parser) mapRow(record []string) (*banking.Transaction, error) {
+	tx := &banking.Transaction{RawData: make(map[string]string, len(record))}
 	for i, v := range record {
 		tx.RawData[fmt.Sprintf("col%d", i)] = v
 	}

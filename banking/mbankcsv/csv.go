@@ -95,10 +95,11 @@ func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*banking.Tran
 			}
 
 			switch {
-			case !inTable && first == tableHeader:
+			case !inTable && strings.Contains(first, tableHeader):
 				inTable = true
 
 			case inTable && isBlankRecord(record):
+				continue
 				// mBank sometimes trails the file with blank lines; ignore them.
 
 			case inTable:

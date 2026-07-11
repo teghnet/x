@@ -1,15 +1,17 @@
+// Package mt940 parses mBank's MT940 statement export.
+//
 // mBank's MT940 export uses the standard SWIFT grammar for Fields 20, 25,
-// 28C, 60F/60M, 61, 62F/62M, 64 (handled generically by package mt940), but
-// its Tag 86 doesn't follow the "?NN" structured-subfield convention that
-// mt940.DefaultDialect understands. Instead it's a free-text line built from
-// a leading 3-digit operation code and description, followed by
-// semicolon-separated "LABEL: value" pairs whose label vocabulary
+// 28C, 60F/60M, 61, 62F/62M, 64 (handled generically by package
+// banking/mt940), but its Tag 86 doesn't follow the "?NN" structured-subfield
+// convention that mt940.DefaultDialect understands. Instead it's a free-text
+// line built from a leading 3-digit operation code and description, followed
+// by semicolon-separated "LABEL: value" pairs whose label vocabulary
 // (Z RACH./NA RACH./OD/DLA/TYT./TNR/KURS/...) is mBank-specific — hence this
 // dedicated dialect. The export is ISO-8859-2 encoded (not windows-1250: the
 // two code pages agree almost everywhere, but diverge for a handful of
 // Polish letters including Ą and Ś, which is exactly where a windows-1250
 // guess falls apart).
-package mbank
+package mbankmt940
 
 import (
 	"regexp"
@@ -19,18 +21,18 @@ import (
 	"github.com/teghnet/x/banking/mt940"
 )
 
-const MT940ParserName = "mbank_mt940"
+const ParserName = "mbank_mt940"
 
 func init() {
-	banking.Register(MT940ParserName, func() banking.Parser { return NewMT940() })
+	banking.Register(ParserName, func() banking.Parser { return New() })
 }
 
-// NewMT940 creates a banking.Parser for mBank's MT940 statement export.
-// Encoding defaults to iso-8859-2, as used by mBank's exports; pass
+// New creates a banking.Parser for mBank's MT940 statement export. Encoding
+// defaults to iso-8859-2, as used by mBank's exports; pass
 // banking.WithEncoding to override.
-func NewMT940(opts ...banking.Option) banking.Parser {
+func New(opts ...banking.Option) banking.Parser {
 	cfg := append([]banking.Option{banking.WithEncoding("iso-8859-2")}, opts...)
-	return mt940.New(mt940Dialect{}, cfg...)
+	return mt940.New(dialect{}, cfg...)
 }
 
 // tag86CodeRe matches the leading 3-digit operation code and description at
@@ -38,11 +40,11 @@ func NewMT940(opts ...banking.Option) banking.Parser {
 // "944 COMPANYNET PRZELEW KRAJOWY".
 var tag86CodeRe = regexp.MustCompile(`^(\d{3})\s+(.*)$`)
 
-// mt940Dialect implements mt940.Dialect for mBank's Tag 86 layout.
-type mt940Dialect struct{}
+// dialect implements mt940.Dialect for mBank's Tag 86 layout.
+type dialect struct{}
 
 // ParseTag86 implements mt940.Dialect.
-func (mt940Dialect) ParseTag86(raw string, tx *banking.Transaction) error {
+func (dialect) ParseTag86(raw string, tx *banking.Transaction) error {
 	reflowed := strings.Join(strings.Fields(strings.ReplaceAll(raw, "\n", " ")), " ")
 	segments := strings.Split(reflowed, ";")
 

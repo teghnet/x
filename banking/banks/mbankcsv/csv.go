@@ -1,5 +1,5 @@
-// Package mbank parses the CSV export from mBank's "Lista operacji"
-// (list of operations) report.
+// Package csv parses the CSV export from mBank's "Lista operacji" (list of
+// operations) report.
 //
 // That export isn't a clean transaction table: it starts with a variable
 // number of preamble lines (bank letterhead, client name, selected account
@@ -13,7 +13,7 @@
 // Amounts are Polish-formatted: a space thousands separator, a comma
 // decimal separator, and a trailing ISO 4217 currency code (e.g.
 // "-1 883,13 PLN").
-package mbank
+package mbankcsv
 
 import (
 	"context"
@@ -61,7 +61,7 @@ func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*banking.Tran
 	return func(yield func(*banking.Transaction, error) bool) {
 		decoded, err := banking.DecodeReader(r, p.cfg.Encoding)
 		if err != nil {
-			yield(nil, fmt.Errorf("mbank: %w", err))
+			yield(nil, fmt.Errorf("mbank/csv: %w", err))
 			return
 		}
 
@@ -83,7 +83,7 @@ func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*banking.Tran
 				return
 			}
 			if err != nil {
-				if !yield(nil, fmt.Errorf("mbank: read row: %w", err)) {
+				if !yield(nil, fmt.Errorf("mbank/csv: read row: %w", err)) {
 					return
 				}
 				continue
@@ -104,7 +104,7 @@ func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*banking.Tran
 			case inTable:
 				tx, err := p.mapRow(record)
 				if err != nil {
-					if !yield(nil, fmt.Errorf("mbank: map row: %w", err)) {
+					if !yield(nil, fmt.Errorf("mbank/csv: map row: %w", err)) {
 						return
 					}
 					continue

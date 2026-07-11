@@ -1,4 +1,4 @@
-package mbank
+package mbankcsv
 
 import (
 	"strings"

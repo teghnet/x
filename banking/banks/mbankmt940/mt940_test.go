@@ -1,4 +1,4 @@
-package mbank
+package mbankmt940
 
 import (
 	"strings"
@@ -7,13 +7,12 @@ import (
 	"github.com/teghnet/x/banking"
 )
 
-// mt940Fixture is a synthetic mBank MT940 export, trimmed and with fake
-// account numbers/names, but structurally faithful to a real export: Tag 86
-// rows built from a leading 3-digit code plus mBank's free-text
-// "LABEL: value" segments, covering an incoming domestic transfer, an
-// outgoing transfer, an FX exchange, a card fee, and a tax-office payment
-// with the tax subfields.
-const mt940Fixture = "" +
+// fixture is a synthetic mBank MT940 export, trimmed and with fake account
+// numbers/names, but structurally faithful to a real export: Tag 86 rows
+// built from a leading 3-digit code plus mBank's free-text "LABEL: value"
+// segments, covering an incoming domestic transfer, an outgoing transfer, an
+// FX exchange, a card fee, and a tax-office payment with the tax subfields.
+const fixture = "" +
 	":20:ST260101CYC/1\r\n" +
 	":25:PL13114020620000767335001001\r\n" +
 	":28C:1/1\r\n" +
@@ -47,11 +46,11 @@ const mt940Fixture = "" +
 	":64:D260105PLN73011,00\r\n" +
 	"-\r\n"
 
-func collectMT940(t *testing.T) []*banking.Transaction {
+func collect(t *testing.T) []*banking.Transaction {
 	t.Helper()
-	p := NewMT940(banking.WithEncoding("utf-8"))
+	p := New(banking.WithEncoding("utf-8"))
 	var txs []*banking.Transaction
-	for tx, err := range p.Parse(t.Context(), strings.NewReader(mt940Fixture)) {
+	for tx, err := range p.Parse(t.Context(), strings.NewReader(fixture)) {
 		if err != nil {
 			t.Fatalf("parse: %v", err)
 		}
@@ -60,8 +59,8 @@ func collectMT940(t *testing.T) []*banking.Transaction {
 	return txs
 }
 
-func TestMT940ParseFixture(t *testing.T) {
-	txs := collectMT940(t)
+func TestParseFixture(t *testing.T) {
+	txs := collect(t)
 	if len(txs) != 5 {
 		t.Fatalf("got %d transactions, want 5", len(txs))
 	}
@@ -146,18 +145,18 @@ func TestMT940ParseFixture(t *testing.T) {
 	}
 }
 
-func TestMT940DefaultsToISO88592(t *testing.T) {
+func TestDefaultsToISO88592(t *testing.T) {
 	// 0xA1 is "Ą" in ISO-8859-2 but "ˇ" (caron) in windows-1250 — one of the
 	// handful of code points where the two encodings diverge, which is
 	// exactly where mBank's real exports were found to use ISO-8859-2, not
-	// windows-1250. Verifies NewMT940 decodes correctly without an explicit
+	// windows-1250. Verifies New decodes correctly without an explicit
 	// encoding override.
 	data := ":20:R\r\n:25:ACC\r\n:28C:1\r\n:60F:C260101PLN0,00\r\n" +
 		":61:2601010101DN45,00NCHGNONREF//CH1\r\n" +
 		":86:341 OGRANICZON\xa1 ODPOWIEDZIALNO\xa6CI\xa1; TNR: 1\r\n" +
 		":62F:D260101PLN45,00\r\n-\r\n"
 
-	p := NewMT940()
+	p := New()
 	var txs []*banking.Transaction
 	for tx, err := range p.Parse(t.Context(), strings.NewReader(data)) {
 		if err != nil {
@@ -173,10 +172,10 @@ func TestMT940DefaultsToISO88592(t *testing.T) {
 	}
 }
 
-func TestMT940Registered(t *testing.T) {
-	p, ok := banking.GetParser(MT940ParserName)
+func TestRegistered(t *testing.T) {
+	p, ok := banking.GetParser(ParserName)
 	if !ok {
-		t.Fatal(`GetParser("` + MT940ParserName + `"): ok = false, want true`)
+		t.Fatal(`GetParser("` + ParserName + `"): ok = false, want true`)
 	}
 	if p == nil {
 		t.Fatal("GetParser(mbank_mt940) returned a nil parser")

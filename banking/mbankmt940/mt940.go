@@ -28,10 +28,10 @@ func init() {
 }
 
 // New creates a banking.Parser for mBank's MT940 statement export. Encoding
-// defaults to iso-8859-2, as used by mBank's exports; pass
+// defaults to banking.EncodingISO88592, as used by mBank's exports; pass
 // banking.WithEncoding to override.
 func New(opts ...banking.Option) banking.Parser {
-	cfg := append([]banking.Option{banking.WithEncoding("iso-8859-2")}, opts...)
+	cfg := append([]banking.Option{banking.WithEncoding(banking.EncodingISO88592)}, opts...)
 	return mt940.New(dialect{}, cfg...)
 }
 
@@ -39,6 +39,45 @@ func New(opts ...banking.Option) banking.Parser {
 // the start of a Tag 86 value, e.g. "716 PRZEKSIĘGOWANIE" or
 // "944 COMPANYNET PRZELEW KRAJOWY".
 var tag86CodeRe = regexp.MustCompile(`^(\d{3})\s+(.*)$`)
+
+// Tag 86 field labels in mBank's free-text "LABEL: value" vocabulary.
+const (
+	labelTitle              = "TYT."
+	labelTaxLiabilityName   = "NAZWA ZOBOW."
+	labelSourceAccount      = "Z RACH."
+	labelDestinationAccount = "NA RACH."
+	labelSender             = "OD"
+	labelRecipient          = "DLA"
+	labelTransactionRef     = "TNR"
+	labelExchangeRate       = "KURS"
+	labelDealNumber         = "NR"
+	labelStampDate          = "DATA STEMPLA"
+	labelTaxpayerID         = "ID UZUP."
+	labelTaxForm            = "SYMBOL FORM."
+	labelTaxPeriod          = "OKRES"
+	labelTaxLiabilityID     = "ID ZOBOW."
+	labelCardNumber1        = "KARTA NR"
+	labelCardNumber2        = "NR KARTY"
+)
+
+// noCustomerRef is the placeholder Field 61 customer reference ("NONREF")
+// that TNR should override, since mBank's own transaction reference is more
+// useful than a bare "no reference" marker.
+const noCustomerRef = "NONREF"
+
+// Keys under which ParseTag86 stores label values that don't map to a
+// standard Transaction field.
+const (
+	rawKeyTNR            = "tnr"
+	rawKeyExchangeRate   = "exchangeRate"
+	rawKeyDealNumber     = "dealNumber"
+	rawKeyStampDate      = "stampDate"
+	rawKeyTaxpayerID     = "taxpayerId"
+	rawKeyTaxForm        = "taxForm"
+	rawKeyTaxPeriod      = "taxPeriod"
+	rawKeyTaxLiabilityID = "taxLiabilityId"
+	rawKeyCardNumber     = "cardNumber"
+)
 
 // dialect implements mt940.Dialect for mBank's Tag 86 layout.
 type dialect struct{}
@@ -75,37 +114,35 @@ func (dialect) ParseTag86(raw string, tx *banking.Transaction) error {
 		key, value = strings.TrimSpace(key), strings.TrimSpace(value)
 
 		switch key {
-		case "TYT.", "NAZWA ZOBOW.":
+		case labelTitle, labelTaxLiabilityName:
 			if value != "" {
 				desc = append(desc, value)
 			}
-		case "Z RACH.", "NA RACH.":
+		case labelSourceAccount, labelDestinationAccount:
 			tx.CounterpartyAccount = value
-		case "OD", "DLA":
+		case labelSender, labelRecipient:
 			tx.CounterpartyName = value
-		case "TNR":
-			// mBank's own transaction reference is more useful than a bare
-			// "NONREF" customer reference carried over from Field 61.
-			if tx.Reference == "" || tx.Reference == "NONREF" {
+		case labelTransactionRef:
+			if tx.Reference == "" || tx.Reference == noCustomerRef {
 				tx.Reference = value
 			}
-			tx.RawData["tnr"] = value
-		case "KURS":
-			tx.RawData["exchangeRate"] = value
-		case "NR":
-			tx.RawData["dealNumber"] = value
-		case "DATA STEMPLA":
-			tx.RawData["stampDate"] = value
-		case "ID UZUP.":
-			tx.RawData["taxpayerId"] = value
-		case "SYMBOL FORM.":
-			tx.RawData["taxForm"] = value
-		case "OKRES":
-			tx.RawData["taxPeriod"] = value
-		case "ID ZOBOW.":
-			tx.RawData["taxLiabilityId"] = value
-		case "KARTA NR", "NR KARTY":
-			tx.RawData["cardNumber"] = value
+			tx.RawData[rawKeyTNR] = value
+		case labelExchangeRate:
+			tx.RawData[rawKeyExchangeRate] = value
+		case labelDealNumber:
+			tx.RawData[rawKeyDealNumber] = value
+		case labelStampDate:
+			tx.RawData[rawKeyStampDate] = value
+		case labelTaxpayerID:
+			tx.RawData[rawKeyTaxpayerID] = value
+		case labelTaxForm:
+			tx.RawData[rawKeyTaxForm] = value
+		case labelTaxPeriod:
+			tx.RawData[rawKeyTaxPeriod] = value
+		case labelTaxLiabilityID:
+			tx.RawData[rawKeyTaxLiabilityID] = value
+		case labelCardNumber1, labelCardNumber2:
+			tx.RawData[rawKeyCardNumber] = value
 		default:
 			desc = append(desc, seg)
 		}

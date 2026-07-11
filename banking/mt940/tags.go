@@ -10,6 +10,15 @@ import (
 	"github.com/govalues/decimal"
 )
 
+// Debit/credit marks used in SWIFT Field 61 and the balance fields
+// (60F/60M/62F/62M/64/65).
+const (
+	markCredit         = "C"
+	markDebit          = "D"
+	markReversalCredit = "RC"
+	markReversalDebit  = "RD"
+)
+
 // parseSwiftDate parses a 6-digit YYMMDD date as used throughout MT940,
 // pivoting the 2-digit year: 00-79 -> 20YY, 80-99 -> 19YY. Statements are
 // always recent, so this is unambiguous in practice.
@@ -120,9 +129,9 @@ func parseTag61(raw string) (tag61, error) {
 		return tag61{}, fmt.Errorf("parse amount %q: %w", m[5], err)
 	}
 	switch out.Mark {
-	case "D", "RC": // debit, or reversal of a credit -> functions as a debit
+	case markDebit, markReversalCredit: // debit, or reversal of a credit -> functions as a debit
 		amount = amount.Neg()
-	case "C", "RD": // credit, or reversal of a debit -> functions as a credit
+	case markCredit, markReversalDebit: // credit, or reversal of a debit -> functions as a credit
 	default:
 		return tag61{}, fmt.Errorf("unknown debit/credit mark %q", out.Mark)
 	}
@@ -160,7 +169,7 @@ func parseBalance(raw string) (balance, error) {
 	if err != nil {
 		return balance{}, fmt.Errorf("parse amount %q: %w", m[4], err)
 	}
-	if m[1] == "D" {
+	if m[1] == markDebit {
 		amount = amount.Neg()
 	}
 	return balance{Date: date, Currency: m[3], Amount: amount}, nil

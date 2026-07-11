@@ -35,12 +35,19 @@ func init() {
 	banking.Register(ParserName, func() banking.Parser { return New() })
 }
 
+// errPrefix identifies errors originating from this package.
+const errPrefix = "mbank/csv"
+
 // dateLayout is the Go reference layout for the "Data operacji" column, e.g. "2026-07-10".
 const dateLayout = "2006-01-02"
 
 // tableHeader is the fixed header row marking the start of the transaction
 // table, past the report's preamble.
 const tableHeader = "#Data operacji"
+
+// rawKeyBalance is the RawData key under which mapRow stores the running
+// balance column.
+const rawKeyBalance = "balance"
 
 // parser implements banking.Parser for mBank's "Lista operacji" CSV export.
 type parser struct {
@@ -61,7 +68,7 @@ func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*banking.Tran
 	return func(yield func(*banking.Transaction, error) bool) {
 		decoded, err := banking.DecodeReader(r, p.cfg.Encoding)
 		if err != nil {
-			yield(nil, fmt.Errorf("mbank/csv: %w", err))
+			yield(nil, fmt.Errorf("%s: %w", errPrefix, err))
 			return
 		}
 
@@ -83,7 +90,7 @@ func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*banking.Tran
 				return
 			}
 			if err != nil {
-				if !yield(nil, fmt.Errorf("mbank/csv: read row: %w", err)) {
+				if !yield(nil, fmt.Errorf("%s: read row: %w", errPrefix, err)) {
 					return
 				}
 				continue
@@ -105,7 +112,7 @@ func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*banking.Tran
 			case inTable:
 				tx, err := p.mapRow(record)
 				if err != nil {
-					if !yield(nil, fmt.Errorf("mbank/csv: map row: %w", err)) {
+					if !yield(nil, fmt.Errorf("%s: map row: %w", errPrefix, err)) {
 						return
 					}
 					continue
@@ -156,7 +163,7 @@ func (p *parser) mapRow(record []string) (*banking.Transaction, error) {
 		RawData:          map[string]string{},
 	}
 	if balance := strings.TrimSpace(record[5]); balance != "" {
-		tx.RawData["balance"] = balance
+		tx.RawData[rawKeyBalance] = balance
 	}
 
 	return tx, nil

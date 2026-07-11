@@ -83,11 +83,11 @@ func TestParseFixture(t *testing.T) {
 	if tx0.CounterpartyName != "JOHN DOE" {
 		t.Errorf("txs[0].CounterpartyName = %q", tx0.CounterpartyName)
 	}
-	if tx0.RawData["dcMark"] != "D" {
-		t.Errorf("txs[0].RawData[dcMark] = %q, want D", tx0.RawData["dcMark"])
+	if tx0.RawData[rawKeyDCMark] != markDebit {
+		t.Errorf("txs[0].RawData[dcMark] = %q, want D", tx0.RawData[rawKeyDCMark])
 	}
-	if tx0.RawData["bankRef"] != "BANKREF01" {
-		t.Errorf("txs[0].RawData[bankRef] = %q", tx0.RawData["bankRef"])
+	if tx0.RawData[rawKeyBankRef] != "BANKREF01" {
+		t.Errorf("txs[0].RawData[bankRef] = %q", tx0.RawData[rawKeyBankRef])
 	}
 
 	tx1 := txs[1]
@@ -103,8 +103,8 @@ func TestParseFixture(t *testing.T) {
 	if got, want := tx2.Amount.String(), "75.25"; got != want {
 		t.Errorf("txs[2].Amount = %s, want %s (RD should be positive)", got, want)
 	}
-	if tx2.RawData["dcMark"] != "RD" {
-		t.Errorf("txs[2].RawData[dcMark] = %q, want RD", tx2.RawData["dcMark"])
+	if tx2.RawData[rawKeyDCMark] != markReversalDebit {
+		t.Errorf("txs[2].RawData[dcMark] = %q, want RD", tx2.RawData[rawKeyDCMark])
 	}
 
 	// RC (reversal of credit) functions as a debit: negative amount. Also

@@ -48,7 +48,7 @@ const fixture = "" +
 
 func collect(t *testing.T) []*banking.Transaction {
 	t.Helper()
-	p := New(banking.WithEncoding("utf-8"))
+	p := New(banking.WithEncoding(banking.EncodingUTF8))
 	var txs []*banking.Transaction
 	for tx, err := range p.Parse(t.Context(), strings.NewReader(fixture)) {
 		if err != nil {
@@ -81,8 +81,8 @@ func TestParseFixture(t *testing.T) {
 	if incoming.Reference != "210860197059371.390001" {
 		t.Errorf("txs[0].Reference = %q, want the TNR value (NONREF should be replaced)", incoming.Reference)
 	}
-	if incoming.RawData["tnr"] != "210860197059371.390001" {
-		t.Errorf("txs[0].RawData[tnr] = %q", incoming.RawData["tnr"])
+	if incoming.RawData[rawKeyTNR] != "210860197059371.390001" {
+		t.Errorf("txs[0].RawData[tnr] = %q", incoming.RawData[rawKeyTNR])
 	}
 
 	outgoing := txs[1]
@@ -106,11 +106,11 @@ func TestParseFixture(t *testing.T) {
 	if fx.Type != "306" {
 		t.Errorf("txs[2].Type = %q, want 306", fx.Type)
 	}
-	if fx.RawData["dealNumber"] != "12773712" {
-		t.Errorf("txs[2].RawData[dealNumber] = %q", fx.RawData["dealNumber"])
+	if fx.RawData[rawKeyDealNumber] != "12773712" {
+		t.Errorf("txs[2].RawData[dealNumber] = %q", fx.RawData[rawKeyDealNumber])
 	}
-	if fx.RawData["exchangeRate"] != "3.642" {
-		t.Errorf("txs[2].RawData[exchangeRate] = %q", fx.RawData["exchangeRate"])
+	if fx.RawData[rawKeyExchangeRate] != "3.642" {
+		t.Errorf("txs[2].RawData[exchangeRate] = %q", fx.RawData[rawKeyExchangeRate])
 	}
 	if fx.CounterpartyAccount != "" {
 		t.Errorf("txs[2].CounterpartyAccount = %q, want empty (FX rows have no counterparty account)", fx.CounterpartyAccount)
@@ -120,25 +120,25 @@ func TestParseFixture(t *testing.T) {
 	if cardFee.Type != "697" {
 		t.Errorf("txs[3].Type = %q, want 697", cardFee.Type)
 	}
-	if cardFee.RawData["cardNumber"] != "5174992036794540" {
-		t.Errorf("txs[3].RawData[cardNumber] = %q", cardFee.RawData["cardNumber"])
+	if cardFee.RawData[rawKeyCardNumber] != "5174992036794540" {
+		t.Errorf("txs[3].RawData[cardNumber] = %q", cardFee.RawData[rawKeyCardNumber])
 	}
 
 	tax := txs[4]
 	if tax.Type != "946" {
 		t.Errorf("txs[4].Type = %q, want 946", tax.Type)
 	}
-	if tax.RawData["taxpayerId"] != "N 5253000665" {
-		t.Errorf("txs[4].RawData[taxpayerId] = %q", tax.RawData["taxpayerId"])
+	if tax.RawData[rawKeyTaxpayerID] != "N 5253000665" {
+		t.Errorf("txs[4].RawData[taxpayerId] = %q", tax.RawData[rawKeyTaxpayerID])
 	}
-	if tax.RawData["taxForm"] != "VAT7" {
-		t.Errorf("txs[4].RawData[taxForm] = %q", tax.RawData["taxForm"])
+	if tax.RawData[rawKeyTaxForm] != "VAT7" {
+		t.Errorf("txs[4].RawData[taxForm] = %q", tax.RawData[rawKeyTaxForm])
 	}
-	if tax.RawData["taxPeriod"] != "25M08" {
-		t.Errorf("txs[4].RawData[taxPeriod] = %q", tax.RawData["taxPeriod"])
+	if tax.RawData[rawKeyTaxPeriod] != "25M08" {
+		t.Errorf("txs[4].RawData[taxPeriod] = %q", tax.RawData[rawKeyTaxPeriod])
 	}
-	if tax.RawData["taxLiabilityId"] != "VAT" {
-		t.Errorf("txs[4].RawData[taxLiabilityId] = %q", tax.RawData["taxLiabilityId"])
+	if tax.RawData[rawKeyTaxLiabilityID] != "VAT" {
+		t.Errorf("txs[4].RawData[taxLiabilityId] = %q", tax.RawData[rawKeyTaxLiabilityID])
 	}
 	if want := "COMPANYNET PRZELEW ORGAN PODATKOWY; ETH POLAND SP Z O.O."; tax.Description != want {
 		t.Errorf("txs[4].Description = %q, want %q", tax.Description, want)

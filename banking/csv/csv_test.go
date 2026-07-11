@@ -74,7 +74,7 @@ func TestEncoding(t *testing.T) {
 	// "z\xb9" is "zą" in windows-1250.
 	data := "2026-03-01,10.00,kwota w z\xb9\n"
 	mapper := ColumnMapper{TransactionDateIdx: 0, AmountIdx: 1, DescriptionIndices: []int{2}}
-	p := New(mapper, banking.WithEncoding("windows-1250"))
+	p := New(mapper, banking.WithEncoding(banking.EncodingWindows1250))
 	txs := collect(t, p, data)
 	if len(txs) != 1 {
 		t.Fatalf("got %d transactions, want 1", len(txs))

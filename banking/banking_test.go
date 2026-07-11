@@ -37,7 +37,7 @@ func TestRegistry(t *testing.T) {
 
 func TestDecodeReader(t *testing.T) {
 	t.Run("utf-8 passthrough", func(t *testing.T) {
-		r, err := DecodeReader(strings.NewReader("héllo"), "utf-8")
+		r, err := DecodeReader(strings.NewReader("héllo"), EncodingUTF8)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -52,7 +52,7 @@ func TestDecodeReader(t *testing.T) {
 
 	t.Run("windows-1250", func(t *testing.T) {
 		// 0xB9 is 'ą' (LATIN SMALL LETTER A WITH OGONEK) in windows-1250.
-		r, err := DecodeReader(strings.NewReader("kwota: 100 z\xb9"), "windows-1250")
+		r, err := DecodeReader(strings.NewReader("kwota: 100 z\xb9"), EncodingWindows1250)
 		if err != nil {
 			t.Fatal(err)
 		}

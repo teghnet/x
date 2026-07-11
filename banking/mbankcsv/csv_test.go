@@ -73,8 +73,8 @@ func TestParseFixture(t *testing.T) {
 	if tx0.StatementAccount != "T-PLN 6711 ... 2246" {
 		t.Errorf("txs[0].StatementAccount = %q", tx0.StatementAccount)
 	}
-	if tx0.RawData["balance"] != "13 407,53 PLN" {
-		t.Errorf("txs[0].RawData[balance] = %q", tx0.RawData["balance"])
+	if tx0.RawData[rawKeyBalance] != "13 407,53 PLN" {
+		t.Errorf("txs[0].RawData[balance] = %q", tx0.RawData[rawKeyBalance])
 	}
 
 	usd := txs[1]

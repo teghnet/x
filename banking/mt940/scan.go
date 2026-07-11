@@ -12,6 +12,15 @@ import (
 // ":20:", ":61:", ":28C:".
 var tagStart = regexp.MustCompile(`^:([0-9]{2}[A-Z]?):`)
 
+// carriageReturn, soh, and etx are the raw control bytes stripped from each
+// scanned line: soh (SOH, 0x01) and etx (ETX, 0x03) are SWIFT FIN block
+// framing characters, not message content.
+const (
+	carriageReturn = "\r"
+	soh            = "\x01"
+	etx            = "\x03"
+)
+
 // record is one SWIFT field: its tag and full value, with continuation lines
 // (if any) joined by "\n".
 type record struct {
@@ -40,19 +49,19 @@ func scan(r io.Reader) iter.Seq2[record, error] {
 
 		for sc.Scan() {
 			// Raw SWIFT FIN deliveries wrap each message in block control
-			// characters: a lone SOH (0x01) line before the message and a
-			// trailing ETX (0x03) glued onto the "-" terminator line. Strip
-			// them so "-\x03" still matches the message boundary check and
-			// a bare "\x01" line is treated as blank.
-			line := strings.Trim(strings.TrimRight(sc.Text(), "\r"), "\x01\x03")
+			// characters: a lone SOH (soh) line before the message and a
+			// trailing ETX (etx) glued onto the tagMessageBoundary
+			// terminator line. Strip them so it still matches the message
+			// boundary check and a bare soh line is treated as blank.
+			line := strings.Trim(strings.TrimRight(sc.Text(), carriageReturn), soh+etx)
 			if line == "" {
 				continue
 			}
-			if line == "-" {
+			if line == tagMessageBoundary {
 				if !flush() {
 					return
 				}
-				if !yield(record{tag: "-"}, nil) {
+				if !yield(record{tag: tagMessageBoundary}, nil) {
 					return
 				}
 				continue

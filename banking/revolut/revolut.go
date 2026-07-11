@@ -36,8 +36,35 @@ func init() {
 	banking.Register(ParserName, func() banking.Parser { return New() })
 }
 
+// errPrefix identifies errors originating from this package.
+const errPrefix = "revolut"
+
 // dateLayout is the Go reference layout for the "Date" column, e.g. "Nov 26, 2018".
 const dateLayout = "Jan 2, 2006"
+
+// Markers used to navigate the report's structure: the table marker and
+// header row that open a currency wallet's "Transaction statement", and the
+// row that closes it.
+const (
+	transactionStatementMarker = "Transaction statement"
+	dateColumnHeader           = "Date"
+	totalRowMarker             = "Total"
+)
+
+// statementAccountFormat builds Transaction.StatementAccount, e.g.
+// "Personal Account (USD)".
+const statementAccountFormat = "Personal Account (%s)"
+
+// Keys under which mapRow stores money-cell details that don't map to a
+// standard Transaction field.
+const (
+	rawKeyBaseAmount   = "baseAmount"
+	rawKeyBaseCurrency = "baseCurrency"
+	rawKeyBalance      = "balance"
+	rawKeyTaxWithheld  = "taxWithheld"
+	rawKeyOtherTaxes   = "otherTaxes"
+	rawKeyFees         = "fees"
+)
 
 // sectionHeaderRe matches a currency wallet's section header, e.g.
 // "Personal Account (PLN)".
@@ -60,7 +87,7 @@ func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*banking.Tran
 	return func(yield func(*banking.Transaction, error) bool) {
 		decoded, err := banking.DecodeReader(r, p.cfg.Encoding)
 		if err != nil {
-			yield(nil, fmt.Errorf("revolut: %w", err))
+			yield(nil, fmt.Errorf("%s: %w", errPrefix, err))
 			return
 		}
 
@@ -86,7 +113,7 @@ func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*banking.Tran
 				return
 			}
 			if err != nil {
-				if !yield(nil, fmt.Errorf("revolut: read row: %w", err)) {
+				if !yield(nil, fmt.Errorf("%s: read row: %w", errPrefix, err)) {
 					return
 				}
 				continue
@@ -101,26 +128,26 @@ func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*banking.Tran
 				currency = sectionHeaderRe.FindStringSubmatch(first)[1]
 				expectHeader, inTable = false, false
 
-			case first == "Transaction statement":
+			case first == transactionStatementMarker:
 				expectHeader, inTable = true, false
 
 			case expectHeader:
 				expectHeader = false
-				if first != "Date" {
-					if !yield(nil, fmt.Errorf("revolut: expected transaction table header, got %q", first)) {
+				if first != dateColumnHeader {
+					if !yield(nil, fmt.Errorf("%s: expected transaction table header, got %q", errPrefix, first)) {
 						return
 					}
 					continue
 				}
 				inTable = true
 
-			case inTable && (first == "" || first == "Total"):
+			case inTable && (first == "" || first == totalRowMarker):
 				inTable = false
 
 			case inTable:
 				tx, err := p.mapRow(record, currency)
 				if err != nil {
-					if !yield(nil, fmt.Errorf("revolut: map row: %w", err)) {
+					if !yield(nil, fmt.Errorf("%s: map row: %w", errPrefix, err)) {
 						return
 					}
 					continue
@@ -157,14 +184,14 @@ func (p *parser) mapRow(record []string, section string) (*banking.Transaction, 
 		Category:         strings.TrimSpace(record[2]),
 		Amount:           m.Amount,
 		Currency:         m.Currency,
-		StatementAccount: fmt.Sprintf("Personal Account (%s)", section),
+		StatementAccount: fmt.Sprintf(statementAccountFormat, section),
 		RawData:          map[string]string{},
 	}
 	if m.HasBase {
-		tx.RawData["baseAmount"] = m.BaseAmount.String()
-		tx.RawData["baseCurrency"] = m.BaseCurrency
+		tx.RawData[rawKeyBaseAmount] = m.BaseAmount.String()
+		tx.RawData[rawKeyBaseCurrency] = m.BaseCurrency
 	}
-	for i, name := range [...]string{"balance", "taxWithheld", "otherTaxes", "fees"} {
+	for i, name := range [...]string{rawKeyBalance, rawKeyTaxWithheld, rawKeyOtherTaxes, rawKeyFees} {
 		if idx := 4 + i; idx < len(record) {
 			tx.RawData[name] = strings.TrimSpace(record[idx])
 		}

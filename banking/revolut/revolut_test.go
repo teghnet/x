@@ -113,7 +113,7 @@ func TestParseFixture(t *testing.T) {
 	if pln1.Description != "Test Merchant" {
 		t.Errorf("txs[0].Description = %q", pln1.Description)
 	}
-	if _, hasBase := pln1.RawData["baseAmount"]; hasBase {
+	if _, hasBase := pln1.RawData[rawKeyBaseAmount]; hasBase {
 		t.Errorf("txs[0].RawData should have no baseAmount for the base-currency account")
 	}
 
@@ -129,11 +129,11 @@ func TestParseFixture(t *testing.T) {
 	if usd.Currency != "USD" {
 		t.Errorf("txs[2].Currency = %q, want USD", usd.Currency)
 	}
-	if got, want := usd.RawData["baseAmount"], "-56.89"; got != want {
+	if got, want := usd.RawData[rawKeyBaseAmount], "-56.89"; got != want {
 		t.Errorf("txs[2].RawData[baseAmount] = %q, want %q", got, want)
 	}
-	if usd.RawData["baseCurrency"] != "PLN" {
-		t.Errorf("txs[2].RawData[baseCurrency] = %q, want PLN", usd.RawData["baseCurrency"])
+	if usd.RawData[rawKeyBaseCurrency] != "PLN" {
+		t.Errorf("txs[2].RawData[baseCurrency] = %q, want PLN", usd.RawData[rawKeyBaseCurrency])
 	}
 	if usd.StatementAccount != "Personal Account (USD)" {
 		t.Errorf("txs[2].StatementAccount = %q", usd.StatementAccount)
@@ -146,7 +146,7 @@ func TestParseFixture(t *testing.T) {
 	if aed.Currency != "AED" {
 		t.Errorf("txs[3].Currency = %q, want AED", aed.Currency)
 	}
-	if got, want := aed.RawData["baseAmount"], "1170.41"; got != want {
+	if got, want := aed.RawData[rawKeyBaseAmount], "1170.41"; got != want {
 		t.Errorf("txs[3].RawData[baseAmount] = %q, want %q", got, want)
 	}
 }

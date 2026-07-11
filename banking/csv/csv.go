@@ -16,6 +16,13 @@ import (
 	"github.com/teghnet/x/banking"
 )
 
+// errPrefix identifies errors and panics originating from this package.
+const errPrefix = "csv"
+
+// rawColumnKeyFormat is the fmt.Sprintf pattern used to key each raw CSV
+// column in Transaction.RawData, e.g. "col0", "col1".
+const rawColumnKeyFormat = "col%d"
+
 // ColumnMapper defines how a row of CSV translates to a denormalized
 // Transaction. Optional columns are *int so a nil pointer unambiguously means
 // "not present in this format" — use new(0), new(1), ... to reference a
@@ -52,10 +59,10 @@ type parser struct {
 // do anything useful.
 func New(mapper ColumnMapper, opts ...banking.Option) banking.Parser {
 	if mapper.AmountIdx < 0 {
-		panic("csv: ColumnMapper.AmountIdx must be set")
+		panic(errPrefix + ": ColumnMapper.AmountIdx must be set")
 	}
 	if mapper.TransactionDateIdx < 0 {
-		panic("csv: ColumnMapper.TransactionDateIdx must be set")
+		panic(errPrefix + ": ColumnMapper.TransactionDateIdx must be set")
 	}
 	return &parser{mapper: mapper, cfg: banking.NewConfig(opts...)}
 }
@@ -65,7 +72,7 @@ func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*banking.Tran
 	return func(yield func(*banking.Transaction, error) bool) {
 		decoded, err := banking.DecodeReader(r, p.cfg.Encoding)
 		if err != nil {
-			yield(nil, fmt.Errorf("csv: %w", err))
+			yield(nil, fmt.Errorf("%s: %w", errPrefix, err))
 			return
 		}
 
@@ -79,7 +86,7 @@ func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*banking.Tran
 				if err == io.EOF {
 					return
 				}
-				yield(nil, fmt.Errorf("csv: skip header: %w", err))
+				yield(nil, fmt.Errorf("%s: skip header: %w", errPrefix, err))
 				return
 			}
 		}
@@ -94,7 +101,7 @@ func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*banking.Tran
 				return
 			}
 			if err != nil {
-				if !yield(nil, fmt.Errorf("csv: read row: %w", err)) {
+				if !yield(nil, fmt.Errorf("%s: read row: %w", errPrefix, err)) {
 					return
 				}
 				continue
@@ -102,7 +109,7 @@ func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*banking.Tran
 
 			tx, err := p.mapRow(record)
 			if err != nil {
-				if !yield(nil, fmt.Errorf("csv: map row: %w", err)) {
+				if !yield(nil, fmt.Errorf("%s: map row: %w", errPrefix, err)) {
 					return
 				}
 				continue
@@ -118,7 +125,7 @@ func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*banking.Tran
 func (p *parser) mapRow(record []string) (*banking.Transaction, error) {
 	tx := &banking.Transaction{RawData: make(map[string]string, len(record))}
 	for i, v := range record {
-		tx.RawData[fmt.Sprintf("col%d", i)] = v
+		tx.RawData[fmt.Sprintf(rawColumnKeyFormat, i)] = v
 	}
 
 	required := func(idx int) (string, error) {

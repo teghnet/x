@@ -17,6 +17,36 @@ import (
 	"github.com/teghnet/x/banking"
 )
 
+// errPrefix identifies errors originating from this package.
+const errPrefix = "mt940"
+
+// SWIFT field tags recognized by Parse, and the sentinel tag scan emits for
+// the "-" message-boundary line.
+const (
+	tagMessageBoundary    = "-"
+	tagAccountID          = "25"
+	tagStatementNumber    = "28"
+	tagStatementNumberC   = "28C"
+	tagOpeningBalance     = "60F"
+	tagOpeningBalanceMod  = "60M"
+	tagStatementLine      = "61"
+	tagClosingBalance     = "62F"
+	tagClosingBalanceMod  = "62M"
+	tagAvailableBalance   = "64"
+	tagForwardAvailBal    = "65"
+	tagInfoToAccountOwner = "86"
+)
+
+// Keys under which Parse stores Field 61 details that don't map to a
+// standard Transaction field.
+const (
+	rawKeyDCMark        = "dcMark"
+	rawKeyFundsCode     = "fundsCode"
+	rawKeyBankRef       = "bankRef"
+	rawKeySupplementary = "supplementary"
+	rawKeyTag86         = "tag86"
+)
+
 // Dialect extracts counterparty and description information from a
 // statement's Tag 86 (Information to Account Owner) text, whose structure is
 // bank-specific and not standardized by SWIFT.
@@ -30,6 +60,19 @@ type Dialect interface {
 // tag86FieldRe matches the "?NN" structured subfield markers used by the
 // DefaultDialect.
 var tag86FieldRe = regexp.MustCompile(`\?(\d{2})`)
+
+// Subfield codes used by DefaultDialect's "?NN" convention.
+const (
+	subfieldPostingText      = "00"
+	subfieldDescFirst        = 20
+	subfieldDescLast         = 29
+	subfieldBankCode         = "30"
+	subfieldCounterpartyAcct = "31"
+)
+
+// subfieldCounterpartyName holds the two subfield codes that, concatenated,
+// form the counterparty name.
+var subfieldCounterpartyName = [2]string{"32", "33"}
 
 // DefaultDialect implements the "?NN" structured-subfield convention common
 // among European banks: ?00 posting text, ?20-?29 free-text description
@@ -64,7 +107,7 @@ func (DefaultDialect) ParseTag86(raw string, tx *banking.Transaction) error {
 	}
 
 	var desc []string
-	for n := 20; n <= 29; n++ {
+	for n := subfieldDescFirst; n <= subfieldDescLast; n++ {
 		if v := fields[fmt.Sprintf("%02d", n)]; v != "" {
 			desc = append(desc, v)
 		}
@@ -72,18 +115,18 @@ func (DefaultDialect) ParseTag86(raw string, tx *banking.Transaction) error {
 	if len(desc) > 0 {
 		tx.Description = strings.Join(desc, " ")
 	}
-	if v := fields["00"]; v != "" {
+	if v := fields[subfieldPostingText]; v != "" {
 		tx.Type = v
 	}
-	if v := fields["30"]; v != "" {
+	if v := fields[subfieldBankCode]; v != "" {
 		tx.CounterpartyBankCode = v
 	}
-	if v := fields["31"]; v != "" {
+	if v := fields[subfieldCounterpartyAcct]; v != "" {
 		tx.CounterpartyAccount = v
 	}
 
 	var name []string
-	for _, code := range [2]string{"32", "33"} {
+	for _, code := range subfieldCounterpartyName {
 		if v := fields[code]; v != "" {
 			name = append(name, v)
 		}
@@ -116,7 +159,7 @@ func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*banking.Tran
 	return func(yield func(*banking.Transaction, error) bool) {
 		decoded, err := banking.DecodeReader(r, p.cfg.Encoding)
 		if err != nil {
-			yield(nil, fmt.Errorf("mt940: %w", err))
+			yield(nil, fmt.Errorf("%s: %w", errPrefix, err))
 			return
 		}
 
@@ -138,7 +181,7 @@ func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*banking.Tran
 
 		for rec, err := range scan(decoded) {
 			if err != nil {
-				if !yield(nil, fmt.Errorf("mt940: %w", err)) {
+				if !yield(nil, fmt.Errorf("%s: %w", errPrefix, err)) {
 					return
 				}
 				continue
@@ -149,48 +192,48 @@ func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*banking.Tran
 			}
 
 			switch rec.tag {
-			case "-":
+			case tagMessageBoundary:
 				if !flushPending() {
 					return
 				}
 				account, stmtNo, currency = "", "", ""
 
-			case "25":
+			case tagAccountID:
 				account = rec.value
 
-			case "28", "28C":
+			case tagStatementNumber, tagStatementNumberC:
 				stmtNo = rec.value
 
-			case "60F", "60M":
+			case tagOpeningBalance, tagOpeningBalanceMod:
 				if !flushPending() {
 					return
 				}
 				bal, err := parseBalance(rec.value)
 				if err != nil {
-					if !yield(nil, fmt.Errorf("mt940: opening balance: %w", err)) {
+					if !yield(nil, fmt.Errorf("%s: opening balance: %w", errPrefix, err)) {
 						return
 					}
 					continue
 				}
 				currency = bal.Currency
 
-			case "62F", "62M", "64", "65":
+			case tagClosingBalance, tagClosingBalanceMod, tagAvailableBalance, tagForwardAvailBal:
 				if !flushPending() {
 					return
 				}
 				if _, err := parseBalance(rec.value); err != nil {
-					if !yield(nil, fmt.Errorf("mt940: balance: %w", err)) {
+					if !yield(nil, fmt.Errorf("%s: balance: %w", errPrefix, err)) {
 						return
 					}
 				}
 
-			case "61":
+			case tagStatementLine:
 				if !flushPending() {
 					return
 				}
 				t61, err := parseTag61(rec.value)
 				if err != nil {
-					if !yield(nil, fmt.Errorf("mt940: statement line: %w", err)) {
+					if !yield(nil, fmt.Errorf("%s: statement line: %w", errPrefix, err)) {
 						return
 					}
 					continue
@@ -204,26 +247,26 @@ func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*banking.Tran
 					Reference:        t61.CustomerRef,
 					StatementAccount: account,
 					StatementNumber:  stmtNo,
-					RawData:          map[string]string{"dcMark": t61.Mark},
+					RawData:          map[string]string{rawKeyDCMark: t61.Mark},
 				}
 				if t61.FundsCode != "" {
-					tx.RawData["fundsCode"] = t61.FundsCode
+					tx.RawData[rawKeyFundsCode] = t61.FundsCode
 				}
 				if t61.BankRef != "" {
-					tx.RawData["bankRef"] = t61.BankRef
+					tx.RawData[rawKeyBankRef] = t61.BankRef
 				}
 				if t61.Supplementary != "" {
-					tx.RawData["supplementary"] = t61.Supplementary
+					tx.RawData[rawKeySupplementary] = t61.Supplementary
 				}
 				pending = tx
 
-			case "86":
+			case tagInfoToAccountOwner:
 				if pending == nil {
 					continue
 				}
-				pending.RawData["tag86"] = rec.value
+				pending.RawData[rawKeyTag86] = rec.value
 				if err := p.dialect.ParseTag86(rec.value, pending); err != nil {
-					if !yield(nil, fmt.Errorf("mt940: tag 86: %w", err)) {
+					if !yield(nil, fmt.Errorf("%s: tag 86: %w", errPrefix, err)) {
 						return
 					}
 					continue

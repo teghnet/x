@@ -152,9 +152,9 @@ func TestParseFixture(t *testing.T) {
 }
 
 func TestRegistered(t *testing.T) {
-	p, ok := banking.GetParser("revolut_csv")
+	p, ok := banking.GetParser(ParserName)
 	if !ok {
-		t.Fatal(`GetParser("revolut_csv"): ok = false, want true`)
+		t.Fatal(`GetParser("` + ParserName + `"): ok = false, want true`)
 	}
 	if p == nil {
 		t.Fatal("GetParser(revolut_csv) returned a nil parser")

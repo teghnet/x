@@ -30,8 +30,10 @@ import (
 	"github.com/teghnet/x/banking"
 )
 
+const ParserName = "revolut_consolidated_csv"
+
 func init() {
-	banking.Register("revolut_csv", func() banking.Parser { return New() })
+	banking.Register(ParserName, func() banking.Parser { return New() })
 }
 
 // dateLayout is the Go reference layout for the "Date" column, e.g. "Nov 26, 2018".

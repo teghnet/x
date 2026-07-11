@@ -39,7 +39,12 @@ func scan(r io.Reader) iter.Seq2[record, error] {
 		}
 
 		for sc.Scan() {
-			line := strings.TrimRight(sc.Text(), "\r")
+			// Raw SWIFT FIN deliveries wrap each message in block control
+			// characters: a lone SOH (0x01) line before the message and a
+			// trailing ETX (0x03) glued onto the "-" terminator line. Strip
+			// them so "-\x03" still matches the message boundary check and
+			// a bare "\x01" line is treated as blank.
+			line := strings.Trim(strings.TrimRight(sc.Text(), "\r"), "\x01\x03")
 			if line == "" {
 				continue
 			}

@@ -5,7 +5,9 @@ go 1.26.3
 require (
 	charm.land/log/v2 v2.0.0
 	github.com/caarlos0/env/v11 v11.4.1
+	github.com/govalues/decimal v0.1.36
 	github.com/joho/godotenv v1.5.1
+	golang.org/x/text v0.35.0
 )
 
 require (
@@ -51,7 +53,6 @@ require (
 	golang.org/x/net v0.51.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
-	golang.org/x/text v0.35.0 // indirect
 	golang.org/x/tools v0.42.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

@@ -82,3 +82,29 @@ func TestStreamCallbackError(t *testing.T) {
 		t.Fatalf("got %v, want sentinel", err)
 	}
 }
+
+func TestAll(t *testing.T) {
+	doc := `<feed><item id="1"><name>a</name></item><item id="2"><name>b</name></item></feed>`
+	var ids []int
+	for it, err := range All[item](strings.NewReader(doc), "item") {
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		ids = append(ids, it.ID)
+	}
+	if len(ids) != 2 || ids[0] != 1 || ids[1] != 2 {
+		t.Fatalf("ids = %v", ids)
+	}
+}
+
+func TestAllBreak(t *testing.T) {
+	doc := `<feed><item id="1"/><item id="2"/><item id="3"/></feed>`
+	var seen int
+	for range All[item](strings.NewReader(doc), "item") {
+		seen++
+		break
+	}
+	if seen != 1 {
+		t.Fatalf("seen = %d, want 1", seen)
+	}
+}

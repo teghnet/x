@@ -62,12 +62,14 @@ func (d *dateOnly) UnmarshalText(text []byte) error {
 }
 
 // payment mirrors a row of testdata/testdata.csv, a real (anonymized)
-// export of a Polish B2B payment ledger: a header naming most but not all
-// columns (two are blank in the header, and left unmapped here), rows with
-// quoted comma-decimal amounts, a non-breaking-space thousands separator on
-// larger amounts, plain calendar dates, a blank line partway through the
-// file, and a negative (correction) amount.
+// export of a Polish B2B payment ledger: a header leaving two columns
+// blank (a leading account ID, targeted here by position, and an always-
+// empty trailing column, left unmapped), rows with quoted comma-decimal
+// amounts, a non-breaking-space thousands separator on larger amounts,
+// plain calendar dates, a blank line partway through the file, and a
+// negative (correction) amount.
 type payment struct {
+	AccountID      string    `csv:",0"`
 	Type           string    `csv:"Typ płatności"`
 	Payer          string    `csv:"Płatnik"`
 	Amount         plnAmount `csv:"Kwota płatności [PLN]"`
@@ -102,6 +104,9 @@ func TestDecodeTestdata(t *testing.T) {
 	}
 
 	for i, p := range got {
+		if p.AccountID != "123456789" {
+			t.Errorf("row %d: AccountID = %q, want 123456789", i, p.AccountID)
+		}
 		if p.DocumentType != "SL" && p.DocumentType != "SK" {
 			t.Errorf("row %d: DocumentType = %q", i, p.DocumentType)
 		}

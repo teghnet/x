@@ -90,3 +90,45 @@ func TestStreamCallbackError(t *testing.T) {
 		t.Fatalf("got %v, want sentinel", err)
 	}
 }
+
+func TestAll(t *testing.T) {
+	var sum int
+	for p, err := range All[point](strings.NewReader(`{"x":1}{"x":2} {"x":3}`)) {
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		sum += p.X
+	}
+	if sum != 6 {
+		t.Fatalf("sum = %d, want 6", sum)
+	}
+}
+
+func TestAllError(t *testing.T) {
+	var got []point
+	var gotErr error
+	for p, err := range All[point](strings.NewReader(`{"x":1}{"x":`)) {
+		if err != nil {
+			gotErr = err
+			break
+		}
+		got = append(got, p)
+	}
+	if gotErr == nil {
+		t.Fatal("expected error for malformed trailing value")
+	}
+	if len(got) != 1 || got[0].X != 1 {
+		t.Fatalf("got %+v, want one value with X=1", got)
+	}
+}
+
+func TestAllBreak(t *testing.T) {
+	var seen int
+	for range All[point](strings.NewReader(`{"x":1}{"x":2}{"x":3}`)) {
+		seen++
+		break
+	}
+	if seen != 1 {
+		t.Fatalf("seen = %d, want 1", seen)
+	}
+}

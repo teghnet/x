@@ -10,6 +10,7 @@ import (
 	stdjson "encoding/json"
 	"fmt"
 	"io"
+	"iter"
 )
 
 // Decode decodes a single JSON value from r into a freshly allocated value of
@@ -49,18 +50,37 @@ func UnmarshalStrict[T any](data []byte) (T, error) {
 // from r, invoking fn for each. Decoding stops at the first error from the
 // decoder or from fn. io.EOF terminates the stream cleanly.
 func Stream[T any](r io.Reader, fn func(T) error) error {
-	dec := stdjson.NewDecoder(r)
-	for {
-		var v T
-		err := dec.Decode(&v)
-		if err == io.EOF {
-			return nil
-		}
+	for v, err := range All[T](r) {
 		if err != nil {
-			return fmt.Errorf("parse/json: stream decode: %w", err)
+			return err
 		}
 		if err := fn(v); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// All returns an iterator over the same sequence of values as Stream, for
+// callers that prefer range over a callback. A decode error is delivered as
+// the second value of the final pair yielded; ranging over All stops there
+// unless the loop body already broke out on its own.
+func All[T any](r io.Reader) iter.Seq2[T, error] {
+	return func(yield func(T, error) bool) {
+		dec := stdjson.NewDecoder(r)
+		for {
+			var v T
+			err := dec.Decode(&v)
+			if err == io.EOF {
+				return
+			}
+			if err != nil {
+				yield(v, fmt.Errorf("parse/json: stream decode: %w", err))
+				return
+			}
+			if !yield(v, nil) {
+				return
+			}
 		}
 	}
 }

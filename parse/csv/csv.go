@@ -5,7 +5,8 @@
 // encoding/csv, which only produces [][]string, this package maps the header
 // row onto struct fields via a `csv` tag (falling back to a case-insensitive
 // field name match), so callers can decode records straight into typed
-// values.
+// values. Columns with a blank header can be targeted by position instead,
+// via a tag of the form `csv:",N"`; see columns.
 package csv
 
 import (
@@ -14,6 +15,7 @@ import (
 	stdcsv "encoding/csv"
 	"fmt"
 	"io"
+	"iter"
 	"reflect"
 	"strconv"
 	"strings"
@@ -42,41 +44,70 @@ func Unmarshal[T any](data []byte) ([]T, error) {
 // Decoding stops at the first error from the reader or from fn. An empty
 // input (no header row) is not an error; fn is simply never called.
 func Stream[T any](r io.Reader, fn func(T) error) error {
-	cr := stdcsv.NewReader(r)
-	header, err := cr.Read()
-	if err == io.EOF {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("parse/csv: read header: %w", err)
-	}
-
-	cols, err := columns[T](header)
-	if err != nil {
-		return fmt.Errorf("parse/csv: %w", err)
-	}
-
-	for {
-		record, err := cr.Read()
-		if err == io.EOF {
-			return nil
-		}
+	for v, err := range All[T](r) {
 		if err != nil {
-			return fmt.Errorf("parse/csv: read record: %w", err)
-		}
-
-		var v T
-		rv := reflect.ValueOf(&v).Elem()
-		for i, c := range cols {
-			if c.fieldIndex < 0 || i >= len(record) {
-				continue
-			}
-			if err := setField(rv.Field(c.fieldIndex), record[i]); err != nil {
-				return fmt.Errorf("parse/csv: column %q: %w", c.name, err)
-			}
+			return err
 		}
 		if err := fn(v); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// All returns an iterator over the same sequence of values as Stream, for
+// callers that prefer range over a callback. A read or decode error is
+// delivered as the second value of the final pair yielded; ranging over All
+// stops there unless the loop body already broke out on its own.
+func All[T any](r io.Reader) iter.Seq2[T, error] {
+	return func(yield func(T, error) bool) {
+		var zero T
+
+		cr := stdcsv.NewReader(r)
+		header, err := cr.Read()
+		if err == io.EOF {
+			return
+		}
+		if err != nil {
+			yield(zero, fmt.Errorf("parse/csv: read header: %w", err))
+			return
+		}
+
+		cols, err := columns[T](header)
+		if err != nil {
+			yield(zero, fmt.Errorf("parse/csv: %w", err))
+			return
+		}
+
+		for {
+			record, err := cr.Read()
+			if err == io.EOF {
+				return
+			}
+			if err != nil {
+				yield(zero, fmt.Errorf("parse/csv: read record: %w", err))
+				return
+			}
+
+			var v T
+			rv := reflect.ValueOf(&v).Elem()
+			var fieldErr error
+			for i, c := range cols {
+				if c.fieldIndex < 0 || i >= len(record) {
+					continue
+				}
+				if err := setField(rv.Field(c.fieldIndex), record[i]); err != nil {
+					fieldErr = fmt.Errorf("parse/csv: column %q: %w", c.name, err)
+					break
+				}
+			}
+			if fieldErr != nil {
+				yield(v, fieldErr)
+				return
+			}
+			if !yield(v, nil) {
+				return
+			}
 		}
 	}
 }
@@ -89,7 +120,10 @@ type column struct {
 
 // columns maps each header entry to a struct field of T by `csv` tag or,
 // failing that, a case-insensitive field name match. A tag of "-" excludes
-// the field from matching.
+// the field from matching. Real-world exports sometimes leave a column's
+// header blank (e.g. a leading ID column); such columns can't be matched by
+// name, so a tag of the form `csv:",N"` (empty name, 0-based column index N)
+// targets one by position instead.
 func columns[T any](header []string) ([]column, error) {
 	t := reflect.TypeFor[T]()
 	if t.Kind() != reflect.Struct {
@@ -97,6 +131,7 @@ func columns[T any](header []string) ([]column, error) {
 	}
 
 	byName := make(map[string]int, t.NumField())
+	byPos := make(map[int]int)
 	for i := range t.NumField() {
 		f := t.Field(i)
 		if !f.IsExported() {
@@ -107,8 +142,17 @@ func columns[T any](header []string) ([]column, error) {
 			if tag == "-" {
 				continue
 			}
-			if n, _, _ := strings.Cut(tag, ","); n != "" {
+			n, opt, _ := strings.Cut(tag, ",")
+			switch {
+			case n != "":
 				name = n
+			case opt != "":
+				pos, err := strconv.Atoi(opt)
+				if err != nil {
+					return nil, fmt.Errorf("field %s: csv tag %q: position must be an integer", f.Name, tag)
+				}
+				byPos[pos] = i
+				continue
 			}
 		}
 		byName[strings.ToLower(name)] = i
@@ -116,9 +160,13 @@ func columns[T any](header []string) ([]column, error) {
 
 	cols := make([]column, len(header))
 	for i, h := range header {
-		idx, ok := byName[strings.ToLower(strings.TrimSpace(h))]
-		if !ok {
-			idx = -1
+		idx := -1
+		if name := strings.TrimSpace(h); name != "" {
+			if fi, ok := byName[strings.ToLower(name)]; ok {
+				idx = fi
+			}
+		} else if fi, ok := byPos[i]; ok {
+			idx = fi
 		}
 		cols[i] = column{name: h, fieldIndex: idx}
 	}

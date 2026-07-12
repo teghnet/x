@@ -81,6 +81,48 @@ func TestStreamCallbackError(t *testing.T) {
 	}
 }
 
+func TestAll(t *testing.T) {
+	var sum int
+	for p, err := range All[point](strings.NewReader("x,y\n1,0\n2,0\n3,0\n")) {
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		sum += p.X
+	}
+	if sum != 6 {
+		t.Fatalf("sum = %d, want 6", sum)
+	}
+}
+
+func TestAllError(t *testing.T) {
+	var got []point
+	var gotErr error
+	for p, err := range All[point](strings.NewReader("x,y\nnope,2\n")) {
+		if err != nil {
+			gotErr = err
+			break
+		}
+		got = append(got, p)
+	}
+	if gotErr == nil {
+		t.Fatal("expected error for wrong type")
+	}
+	if len(got) != 0 {
+		t.Fatalf("got %+v, want none", got)
+	}
+}
+
+func TestAllBreak(t *testing.T) {
+	var seen int
+	for range All[point](strings.NewReader("x,y\n1,0\n2,0\n3,0\n")) {
+		seen++
+		break
+	}
+	if seen != 1 {
+		t.Fatalf("seen = %d, want 1", seen)
+	}
+}
+
 func TestFieldNameFallback(t *testing.T) {
 	type row struct {
 		Name string
@@ -108,5 +150,49 @@ func TestTagDash(t *testing.T) {
 	want := row{Age: 36}
 	if len(got) != 1 || got[0] != want {
 		t.Fatalf("got %+v, want %+v", got, want)
+	}
+}
+
+func TestTagPosition(t *testing.T) {
+	// A blank header (e.g. a leading ID column some exports leave unnamed)
+	// can't be matched by name, so it's targeted by 0-based index instead.
+	type row struct {
+		ID   string `csv:",0"`
+		Name string `csv:"name"`
+	}
+	got, err := Unmarshal[row]([]byte(",name\n42,Ada\n"))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := row{ID: "42", Name: "Ada"}
+	if len(got) != 1 || got[0] != want {
+		t.Fatalf("got %+v, want %+v", got, want)
+	}
+}
+
+func TestTagPositionMultipleBlankHeaders(t *testing.T) {
+	// Two blank-header columns in the same row must be distinguishable by
+	// position; an untagged field never matches either.
+	type row struct {
+		First string `csv:",0"`
+		Mid   string `csv:"mid"`
+		Last  string `csv:",2"`
+	}
+	got, err := Unmarshal[row]([]byte(",mid,\na,b,c\n"))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := row{First: "a", Mid: "b", Last: "c"}
+	if len(got) != 1 || got[0] != want {
+		t.Fatalf("got %+v, want %+v", got, want)
+	}
+}
+
+func TestTagPositionInvalid(t *testing.T) {
+	type row struct {
+		Bad string `csv:",oops"`
+	}
+	if _, err := Unmarshal[row]([]byte(",\nx\n")); err == nil {
+		t.Fatal("expected error for non-integer csv tag position")
 	}
 }

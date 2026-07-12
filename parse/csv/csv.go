@@ -10,6 +10,7 @@ package csv
 
 import (
 	"bytes"
+	"encoding"
 	stdcsv "encoding/csv"
 	"fmt"
 	"io"
@@ -124,9 +125,19 @@ func columns[T any](header []string) ([]column, error) {
 	return cols, nil
 }
 
-// setField parses s into fv according to its kind. An empty string leaves
-// numeric and boolean fields at their zero value rather than erroring.
+// setField parses s into fv. Fields whose type implements
+// encoding.TextUnmarshaler (e.g. decimal.Decimal, time.Time, or a
+// locale-specific wrapper around either) delegate to it; the type decides
+// how to handle an empty cell. Otherwise fv is set according to its kind, and
+// an empty string leaves numeric and boolean fields at their zero value
+// rather than erroring.
 func setField(fv reflect.Value, s string) error {
+	if fv.CanAddr() {
+		if u, ok := fv.Addr().Interface().(encoding.TextUnmarshaler); ok {
+			return u.UnmarshalText([]byte(s))
+		}
+	}
+
 	switch fv.Kind() {
 	case reflect.String:
 		fv.SetString(s)

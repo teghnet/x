@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/govalues/decimal"
 )
@@ -35,24 +36,49 @@ func (a *plnAmount) UnmarshalText(text []byte) error {
 	return nil
 }
 
+// dateOnlyLayout is the plain calendar-date format used by Data płatności,
+// Data wystawienia and Termin płatności (e.g. "2026-03-11"), as opposed to
+// the RFC 3339 format time.Time.UnmarshalText expects.
+const dateOnlyLayout = "2006-01-02"
+
+// dateOnly wraps time.Time to parse dateOnlyLayout dates. It implements
+// encoding.TextUnmarshaler, which Stream/Decode use for any field type that
+// needs more than the built-in kinds.
+type dateOnly struct {
+	time.Time
+}
+
+func (d *dateOnly) UnmarshalText(text []byte) error {
+	s := string(text)
+	if s == "" {
+		return nil
+	}
+	t, err := time.Parse(dateOnlyLayout, s)
+	if err != nil {
+		return err
+	}
+	d.Time = t
+	return nil
+}
+
 // payment mirrors a row of testdata/testdata.csv, a real (anonymized)
 // export of a Polish B2B payment ledger: a header naming most but not all
 // columns (two are blank in the header, and left unmapped here), rows with
 // quoted comma-decimal amounts, a non-breaking-space thousands separator on
-// larger amounts, a blank line partway through the file, and a negative
-// (correction) amount.
+// larger amounts, plain calendar dates, a blank line partway through the
+// file, and a negative (correction) amount.
 type payment struct {
 	Type           string    `csv:"Typ płatności"`
 	Payer          string    `csv:"Płatnik"`
 	Amount         plnAmount `csv:"Kwota płatności [PLN]"`
-	Date           string    `csv:"Data płatności"`
+	Date           dateOnly  `csv:"Data płatności"`
 	Status         string    `csv:"Status"`
 	PaymentID      string    `csv:"Identyfikator płatności"`
 	Counterparty   string    `csv:"Kontrahent"`
 	DocumentNumber string    `csv:"Numer dokumentu"`
 	DocumentType   string    `csv:"Typ dokumentu"`
-	IssueDate      string    `csv:"Data wystawienia"`
-	DueDate        string    `csv:"Termin płatności"`
+	IssueDate      dateOnly  `csv:"Data wystawienia"`
+	DueDate        dateOnly  `csv:"Termin płatności"`
 	GrossValue     plnAmount `csv:"Wartość brutto [PLN]"`
 	Paid           plnAmount `csv:"Zapłacono [PLN]"`
 }
@@ -83,6 +109,18 @@ func TestDecodeTestdata(t *testing.T) {
 		if !p.Amount.IsZero() {
 			t.Errorf("row %d: Amount = %s, want 0", i, p.Amount)
 		}
+		// "Data płatności" is blank in every row of this export.
+		if !p.Date.IsZero() {
+			t.Errorf("row %d: Date = %s, want zero", i, p.Date)
+		}
+	}
+
+	wantDate := func(t *testing.T, label string, got dateOnly, y int, m time.Month, d int) {
+		t.Helper()
+		want := time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+		if !got.Equal(want) {
+			t.Errorf("%s = %s, want %s", label, got, want)
+		}
 	}
 
 	first := got[0]
@@ -98,6 +136,8 @@ func TestDecodeTestdata(t *testing.T) {
 	if got, want := first.Paid.String(), "80.13"; got != want {
 		t.Errorf("first.Paid = %s, want %s", got, want)
 	}
+	wantDate(t, "first.IssueDate", first.IssueDate, 2026, time.March, 11)
+	wantDate(t, "first.DueDate", first.DueDate, 2026, time.May, 25)
 
 	// "1 003,73": non-breaking-space thousands separator must be stripped.
 	thousands := got[2]
@@ -107,6 +147,8 @@ func TestDecodeTestdata(t *testing.T) {
 	if got, want := thousands.Paid.String(), "1003.73"; got != want {
 		t.Errorf("thousands.Paid = %s, want %s", got, want)
 	}
+	wantDate(t, "thousands.IssueDate", thousands.IssueDate, 2026, time.April, 2)
+	wantDate(t, "thousands.DueDate", thousands.DueDate, 2026, time.May, 17)
 
 	// "-312,38": a correction row with a negative amount.
 	last := got[len(got)-1]
@@ -119,4 +161,6 @@ func TestDecodeTestdata(t *testing.T) {
 	if !last.GrossValue.IsNeg() {
 		t.Errorf("last.GrossValue = %s, want negative", last.GrossValue)
 	}
+	wantDate(t, "last.IssueDate", last.IssueDate, 2026, time.May, 25)
+	wantDate(t, "last.DueDate", last.DueDate, 2026, time.May, 25)
 }

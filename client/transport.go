@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"a/internal/backoff"
+	"github.com/teghnet/x/internal/backoff"
 )
 
 // retryTransport is an http.RoundTripper that applies rate limiting before each

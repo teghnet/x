@@ -8,6 +8,7 @@ import (
 	"path"
 )
 
+type XDGProvider func() XDG
 type XDG interface {
 	// ### User directories
 
@@ -89,16 +90,16 @@ func NewXDG(app string, opts ...ConfOpt) XDG {
 		opt(&c)
 	}
 	if c.mkCurrentDirs {
-		errLog(mkCurrentDir(dirCache))
-		errLog(mkCurrentDir(dirConfig))
-		errLog(mkCurrentDir(dirData))
-		errLog(mkCurrentDir(dirState))
+		errLog(mkDotDir(dirCache))
+		errLog(mkDotDir(dirConfig))
+		errLog(mkDotDir(dirData))
+		errLog(mkDotDir(dirState))
 	} else if c.mkLocalUnlessDefaultExist {
-		errLog(mkLocalDir(app))
-		errLog(mkLocalDir(app, dirCache))
-		errLog(mkLocalDir(app, dirConfig))
-		errLog(mkLocalDir(app, dirData))
-		errLog(mkLocalDir(app, dirState))
+		errLog(mkLocalAppDir(app))
+		errLog(mkLocalAppDir(app, dirCache))
+		errLog(mkLocalAppDir(app, dirConfig))
+		errLog(mkLocalAppDir(app, dirData))
+		errLog(mkLocalAppDir(app, dirState))
 	}
 	return xdg{
 		app:        App(app),

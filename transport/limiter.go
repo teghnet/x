@@ -1,10 +1,28 @@
-package client
+package transport
 
 import (
 	"context"
 	"sync"
 	"time"
 )
+
+var defaultLimiter = newLimiter(10, 5)
+
+// newLimiter builds a limiter allowing rate requests per second with the given
+// burst. A rate <= 0 disables limiting (wait always returns immediately).
+func newLimiter(rate float64, burst int) *limiter {
+	b := float64(burst)
+	if b < 1 {
+		b = 1
+	}
+	return &limiter{
+		rate:   rate,
+		burst:  b,
+		tokens: b,
+		now:    time.Now,
+		sleep:  defaultSleeper,
+	}
+}
 
 // limiter is a token-bucket rate limiter. Tokens refill continuously at a fixed
 // rate up to a burst capacity. It avoids a background goroutine by computing
@@ -19,37 +37,7 @@ type limiter struct {
 	sleep  func(context.Context, time.Duration) error
 }
 
-// newLimiter builds a limiter allowing rate requests per second with the given
-// burst. A rate <= 0 disables limiting (wait always returns immediately).
-func newLimiter(rate float64, burst int) *limiter {
-	b := float64(burst)
-	if b < 1 {
-		b = 1
-	}
-	return &limiter{
-		rate:   rate,
-		burst:  b,
-		tokens: b,
-		now:    time.Now,
-		sleep:  sleepCtx,
-	}
-}
-
-func sleepCtx(ctx context.Context, d time.Duration) error {
-	if d <= 0 {
-		return ctx.Err()
-	}
-	t := time.NewTimer(d)
-	defer t.Stop()
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-t.C:
-		return nil
-	}
-}
-
-// wait blocks until a token is available or ctx is cancelled.
+// wait blocks until a token is available or ctx is canceled.
 func (l *limiter) wait(ctx context.Context) error {
 	if l == nil || l.rate <= 0 {
 		return ctx.Err()

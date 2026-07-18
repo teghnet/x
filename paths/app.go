@@ -7,6 +7,20 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+)
+
+const (
+	dirCache  = "cache"
+	dirConfig = "config"
+	dirData   = "share"
+	dirState  = "state"
+
+	dotLocal  = ".local"
+	dotCache  = "." + dirCache
+	dotConfig = "." + dirConfig
+	dotData   = "." + dirData
+	dotState  = "." + dirState
 )
 
 // App is similar to AppConfig but does not need a config sub dir.
@@ -81,7 +95,7 @@ func AppData(app string) string {
 		panic(fmt.Sprintf("unable to determine app data directory: %v", err))
 	}
 
-	return filepath.Join(homeDir, ".local", dirDataXDGCompliant, app)
+	return filepath.Join(homeDir, dotLocal, dirData, app)
 }
 
 // AppState returns the state directory path for the given app.
@@ -107,85 +121,84 @@ func AppState(app string) string {
 		panic(fmt.Sprintf("unable to determine app state directory: %v", err))
 	}
 
-	return filepath.Join(homeDir, ".local", dirState, app)
+	return filepath.Join(homeDir, dotLocal, dirState, app)
 }
 
 // localAppDir searches for a local application directory in the current working directory.
-// It checks multiple patterns: .local/app/dir, .local/dir, .dir/app, .dir, and .app/dir in priority order.
+// It checks multiple patterns: .local/<app>/<dir>, .local/<dir>, .<dir>, and .<app>/<dir> in priority order.
 // Returns the first existing directory path and true, or empty string and false if none exist.
-// Skips .local patterns when working directory is the user's home directory.
+// Skips .local & .<dir> patterns when the working directory is the user's home directory.
 func localAppDir(app string, dir ...string) (string, bool) {
+	if strings.TrimSpace(app) == "" {
+		panic("localAppDir: app name must not be empty")
+	}
 	if wd, err := os.Getwd(); err == nil {
 		if !wdIsHome() {
-			d := filepath.Join(wd, ".local", app, filepath.Join(dir...))
+			d := filepath.Join(wd, dotLocal, app, filepath.Join(dir...))
 			if info, err := os.Stat(d); err == nil && info.IsDir() {
-				return d, true
-			}
-			d = filepath.Join(wd, ".local", filepath.Join(dir...))
-			if info, err := os.Stat(d); err == nil && info.IsDir() {
+				// Return WD/.local/<app>/<dir>
 				return d, true
 			}
 			if len(dir) > 0 {
-				d = filepath.Join(wd, "."+filepath.Join(dir...), app)
+				d = filepath.Join(wd, dotLocal, filepath.Join(dir...))
 				if info, err := os.Stat(d); err == nil && info.IsDir() {
+					// Return WD/.local/<dir>
 					return d, true
 				}
 				d = filepath.Join(wd, "."+filepath.Join(dir...))
 				if info, err := os.Stat(d); err == nil && info.IsDir() {
+					// Return WD/.<dir>
 					return d, true
 				}
 			}
 		}
 		d := filepath.Join(wd, "."+app, filepath.Join(dir...))
 		if info, err := os.Stat(d); err == nil && info.IsDir() {
+			// Return WD/.<app>/<dir>
 			return d, true
 		}
 	}
 	return "", false
 }
 
-const (
-	dirCache            = "cache"
-	dirConfig           = "config"
-	dirData             = "data"
-	dirDataXDGCompliant = "share"
-	dirState            = "state"
-)
-
-func mkLocalDir(app string, dir ...string) error {
+func mkLocalAppDir(app string, dir ...string) error {
+	if strings.TrimSpace(app) != "" {
+		panic("localAppDir: app name must not be empty")
+	}
+	{
+		var dd []string
+		for _, d := range dir {
+			if strings.TrimSpace(d) != "" {
+				dd = append(dd, d)
+			}
+		}
+		dir = dd
+	}
 	_, ok := localAppDir(app, dir...)
 	if ok {
 		return nil
+	}
+	if wdIsHome() {
+		return fmt.Errorf("mkLocalDir: cannot create `.%s` directory in $HOME", app)
 	}
 	wd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-	if len(dir) == 0 {
-		if wdIsHome() {
-			return fmt.Errorf("mkLocalDir: cannot create `.%s` directory in $HOME", app)
-		}
-		d := filepath.Join(wd, ".local")
-		if info, err := os.Stat(d); err == nil && info.IsDir() {
-			return os.MkdirAll(filepath.Join(d, app), 0700)
-		}
-		return os.MkdirAll(filepath.Join(wd, "."+app), 0700)
-	}
-	if wdIsHome() {
-		return fmt.Errorf("mkLocalDir: cannot create `.%s/%s` directory in $HOME", dir, app)
-	}
-	d := filepath.Join(wd, ".local", app)
+	d := filepath.Join(wd, dotLocal, app)
 	if info, err := os.Stat(d); err == nil && info.IsDir() {
+		// Make WD/.local/<app>/<dir>
 		return os.MkdirAll(filepath.Join(d, filepath.Join(dir...)), 0700)
 	}
-	return os.MkdirAll(filepath.Join(wd, "."+filepath.Join(dir...), app), 0700)
+	// Make WD/.<app>/<dir>
+	return os.MkdirAll(filepath.Join(wd, "."+app, filepath.Join(dir...)), 0700)
 }
 
-func mkCurrentDir(dir ...string) error {
+func mkDotDir(dir ...string) error {
 	{
 		var dd []string
 		for _, d := range dir {
-			if d != "" {
+			if strings.TrimSpace(d) != "" {
 				dd = append(dd, d)
 			}
 		}
@@ -196,10 +209,11 @@ func mkCurrentDir(dir ...string) error {
 	}
 	wd, err := os.Getwd()
 	if err != nil {
-		return err
+		return fmt.Errorf("mkCurrentDir: %w", err)
 	}
 	if wdIsHome() {
-		return fmt.Errorf("mkCurrentDir: cannot create local `.%s` directory in $HOME", dir)
+		return fmt.Errorf("mkCurrentDir: cannot create `.%s` directory in $HOME", dir)
 	}
+	// Make WD/.<dir>
 	return os.MkdirAll(filepath.Join(wd, "."+filepath.Join(dir...)), 0700)
 }

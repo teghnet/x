@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"iter"
-
-	"charm.land/log/v2"
 )
+
+func ErrCommand(err error) Command { return func(ctx context.Context) error { return err } }
 
 // Command represents an executable operation that accepts a context and returns an error.
 type Command func(context.Context) error
@@ -45,13 +45,13 @@ func Batch(args []string, cs CommandSelector) Command {
 		if err != nil {
 			return err
 		}
-		defer ClosePrint(f)
+		defer Close(f)
 		for err := range batchExec(ctx, json.NewDecoder(f), cs) {
 			if err != nil {
 				if !keepRunningWhenError {
 					return err
 				}
-				log.Warn("command failed", "err", err)
+				Warn("command failed", "err", err)
 			}
 		}
 		return nil

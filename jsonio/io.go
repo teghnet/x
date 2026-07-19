@@ -18,7 +18,7 @@ func Decode(path string, v any) error {
 	if err != nil {
 		return err
 	}
-	defer x.ClosePrint(r)
+	defer x.Close(r)
 	return json.NewDecoder(r).Decode(&v)
 }
 
@@ -43,7 +43,7 @@ func Load[T any](path string) (T, error) {
 		// }
 		return v, err
 	}
-	defer x.ClosePrint(r)
+	defer x.Close(r)
 	return v, json.NewDecoder(r).Decode(&v)
 }
 
@@ -102,7 +102,7 @@ func Store[T any](path string, v T) error {
 	if err != nil {
 		return err
 	}
-	defer x.ClosePrint(w)
+	defer x.Close(w)
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	return enc.Encode(&v)

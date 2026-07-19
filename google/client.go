@@ -14,15 +14,15 @@ import (
 )
 
 func fullScope() []string {
-	scopes := make(map[string]bool)
+	scopes := make(map[string]struct{})
 	for _, s := range gsheets.ScopesAll {
-		scopes[s] = true
+		scopes[s] = struct{}{}
 	}
 	for _, s := range oauth.ScopesAll {
-		scopes[s] = true
+		scopes[s] = struct{}{}
 	}
 	for _, s := range gdrive.ScopeFull {
-		scopes[s] = true
+		scopes[s] = struct{}{}
 	}
 	return slices.Sorted(maps.Keys(scopes))
 }

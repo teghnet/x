@@ -43,7 +43,7 @@ func Collect[T comparable](path string) (Collection[T], error) {
 		}
 		return nil, err
 	}
-	defer x.ClosePrint(r)
+	defer x.Close(r)
 	var v Collection[T]
 	for res := range List[T](r) {
 		if res.Err != nil {
@@ -60,7 +60,7 @@ func Collect1[T comparable](path string) (Collection[T], error) {
 	if err != nil {
 		return nil, err
 	}
-	defer x.ClosePrint(r)
+	defer x.Close(r)
 	var v Collection[T]
 	for res := range List[T](r) {
 		if res.Err != nil {
@@ -76,7 +76,7 @@ func Save[T comparable](path string, c Collection[T]) error {
 	if err != nil {
 		return err
 	}
-	defer x.ClosePrint(w)
+	defer x.Close(w)
 	for _, cc := range c {
 		err = Write(w, cc)
 		if err != nil {

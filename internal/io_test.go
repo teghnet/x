@@ -28,11 +28,11 @@ func TestCloseFatal_Success(t *testing.T) {
 func TestClosePrint_Success(t *testing.T) {
 	m := &mockCloser{err: nil}
 	// ClosePrint should not panic when Close() returns nil
-	x.ClosePrint(m)
+	x.Close(m)
 }
 
 func TestClosePrint_Error(t *testing.T) {
 	m := &mockCloser{err: errors.New("close error")}
 	// ClosePrint should log but not panic when Close() returns an error
-	x.ClosePrint(m)
+	x.Close(m)
 }

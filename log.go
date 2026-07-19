@@ -63,3 +63,14 @@ func Fatalf(format string, args ...any) { log.Fatalf(format, args...) }
 
 // Printf logs a formatted message without a level using the default logger.
 func Printf(format string, args ...any) { log.Printf(format, args...) }
+
+func PrintErr(err error) {
+	if err != nil {
+		Printf("err: %v", err)
+	}
+}
+func WarnErr(err error) {
+	if err != nil {
+		Warnf("err: %v", err)
+	}
+}

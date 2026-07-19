@@ -27,7 +27,7 @@ func ListFS[T any](fsfs fs.FS, name string) iter.Seq[Result[T]] {
 			_ = yield(Result[T]{Err: err})
 			return
 		}
-		defer x.ClosePrint(f)
+		defer x.Close(f)
 		List[T](f)(yield)
 	}
 }
@@ -40,7 +40,7 @@ func ArrayFS[T any](fsfs fs.FS, name string) iter.Seq[Result[T]] {
 			_ = yield(Result[T]{Err: err})
 			return
 		}
-		defer x.ClosePrint(f)
+		defer x.Close(f)
 		Array[T](f)(yield)
 	}
 }
@@ -66,7 +66,7 @@ func JSONList[T any](fsfs fs.FS, name string) iter.Seq2[T, error] {
 			_ = yield(*new(T), err)
 			return
 		}
-		defer x.ClosePrint(f)
+		defer x.Close(f)
 		ReadJSONList[T](f)(yield)
 	}
 }
@@ -80,7 +80,7 @@ func JSONArray[T any](fsfs fs.FS, name string) iter.Seq2[T, error] {
 			yield(*new(T), err)
 			return
 		}
-		defer x.ClosePrint(f)
+		defer x.Close(f)
 		json.IterArray[T](f)(yield)
 	}
 }

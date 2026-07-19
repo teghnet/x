@@ -1,6 +1,15 @@
 package gsheets
 
-import "google.golang.org/api/sheets/v4"
+// TODO: Add more types as needed for specific Google Sheets interactions.
+// For example, configuration for specific sheet ranges, or custom request types.
+
+// Sheet represents a single sheet within a Google Spreadsheet.
+type Sheet struct {
+	ID    string `json:"id,omitempty"`
+	Name  string `json:"name"`
+	GID   int64  `json:"gid,omitempty"`
+	Title string `json:"title,omitempty"`
+}
 
 // SheetField represents a field in a Google Sheet.
 type SheetField struct {
@@ -8,24 +17,10 @@ type SheetField struct {
 	Value  any
 }
 
-// TODO: Add more types as needed for specific Google Sheets interactions.
-// For example, configuration for specific sheet ranges, or custom request types.
-
-// Spreadsheet represents a Google Spreadsheet with its ID and potentially its properties.
-type Spreadsheet struct {
-	ID    string
-	Title string
-	// Add other properties as needed
-}
-
-// Sheet represents a single sheet within a Google Spreadsheet.
-type Sheet struct {
-	ID    int64
-	Title string
-	// Add other properties as needed
-}
-
-// ValueRange is a wrapper around sheets.ValueRange for convenience.
-type ValueRange struct {
-	*sheets.ValueRange
+type SheetInfo struct {
+	URL             string `json:"url,omitempty"`
+	SpreadsheetID   string `json:"spreadsheet_id,omitempty"`
+	SpreadsheetName string `json:"spreadsheet_name,omitempty"`
+	SheetID         int64  `json:"sheet_id"`
+	SheetName       string `json:"sheet_name"`
 }

@@ -25,7 +25,7 @@ func XMLs[T any](fsfs fs.FS, name, elementName string) iter.Seq2[T, error] {
 			yield(*new(T), err)
 			return
 		}
-		defer x.ClosePrint(f)
+		defer x.Close(f)
 		ReadAll[T](f, elementName)(yield)
 	}
 }

@@ -28,6 +28,7 @@ const tokenFilePattern2 = "%s_" + tokenFilePattern
 
 func TokenSource(ctx context.Context, xdg paths.XDG, scope []string) (oauth2.TokenSource, error) {
 	configPath := xdg.ConfigPath(clientSecretFilePattern)
+
 	// 1) Find JWT config if present
 	jwtConfig, err := getJWTConfig(configPath, scope...)
 	if err == nil {

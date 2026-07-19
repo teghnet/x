@@ -4,6 +4,7 @@ go 1.26.5
 
 require (
 	charm.land/huh/v2 v2.0.3
+	charm.land/lipgloss/v2 v2.0.5
 	charm.land/log/v2 v2.0.0
 	github.com/caarlos0/env/v11 v11.4.1
 	github.com/govalues/decimal v0.1.36
@@ -16,7 +17,6 @@ require (
 require (
 	charm.land/bubbles/v2 v2.1.1 // indirect
 	charm.land/bubbletea/v2 v2.0.8 // indirect
-	charm.land/lipgloss/v2 v2.0.5 // indirect
 	cloud.google.com/go/auth v0.22.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect

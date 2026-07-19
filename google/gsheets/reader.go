@@ -38,7 +38,9 @@ func ReadRows[T any](ctx context.Context, r *Reader, sheetRange string) iter.Seq
 			return
 		}
 
-		resp, err := r.service.Spreadsheets.Values.Get(r.spreadsheetID, sheetRange).Context(ctx).Do()
+		resp, err := r.service.Spreadsheets.Values.Get(r.spreadsheetID, sheetRange).Context(ctx).
+			ValueRenderOption("UNFORMATTED_VALUE").
+			Do()
 		if err != nil {
 			yield(zero, fmt.Errorf("spreadsheets.values.get: %w", err))
 			return

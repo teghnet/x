@@ -8,7 +8,7 @@
 package html
 
 import (
-	stdhtml "html"
+	"html"
 	"strings"
 )
 
@@ -140,7 +140,7 @@ func appendText(toks *[]Token, raw string) {
 	if raw == "" {
 		return
 	}
-	*toks = append(*toks, Token{Type: TextToken, Data: stdhtml.UnescapeString(raw)})
+	*toks = append(*toks, Token{Type: TextToken, Data: html.UnescapeString(raw)})
 }
 
 // parseTag parses a start, end or self-closing tag beginning at s[i] (which is
@@ -244,7 +244,7 @@ func parseAttr(s string, j int) (Attr, int) {
 		}
 		val = s[valStart:j]
 	}
-	return Attr{Key: key, Val: stdhtml.UnescapeString(val)}, j
+	return Attr{Key: key, Val: html.UnescapeString(val)}, j
 }
 
 func isSpace(b byte) bool {
@@ -275,7 +275,7 @@ func Title(data []byte) string {
 	for i, t := range toks {
 		if t.Type == StartTagToken && t.Data == "title" {
 			if i+1 < len(toks) && toks[i+1].Type == TextToken {
-				return strings.TrimSpace(stdhtml.UnescapeString(toks[i+1].Data))
+				return strings.TrimSpace(html.UnescapeString(toks[i+1].Data))
 			}
 			return ""
 		}

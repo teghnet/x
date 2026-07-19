@@ -12,7 +12,7 @@ package csv
 import (
 	"bytes"
 	"encoding"
-	stdcsv "encoding/csv"
+	"encoding/csv"
 	"fmt"
 	"io"
 	"iter"
@@ -20,6 +20,11 @@ import (
 	"strconv"
 	"strings"
 )
+
+// Unmarshal decodes CSV bytes into a slice of T; see Decode.
+func Unmarshal[T any](data []byte) ([]T, error) {
+	return Decode[T](bytes.NewReader(data))
+}
 
 // Decode reads a CSV document from r, treating the first record as a header
 // of column names, and returns one T per remaining record.
@@ -34,17 +39,12 @@ func Decode[T any](r io.Reader) ([]T, error) {
 	return out, nil
 }
 
-// Unmarshal decodes CSV bytes into a slice of T; see Decode.
-func Unmarshal[T any](data []byte) ([]T, error) {
-	return Decode[T](bytes.NewReader(data))
-}
-
 // Stream reads r as a CSV document, one header row of column names followed
 // by records, decoding each record into a value of type T and invoking fn.
 // Decoding stops at the first error from the reader or from fn. An empty
 // input (no header row) is not an error; fn is simply never called.
 func Stream[T any](r io.Reader, fn func(T) error) error {
-	for v, err := range All[T](r) {
+	for v, err := range Iter[T](r) {
 		if err != nil {
 			return err
 		}
@@ -55,15 +55,15 @@ func Stream[T any](r io.Reader, fn func(T) error) error {
 	return nil
 }
 
-// All returns an iterator over the same sequence of values as Stream, for
+// Iter returns an iterator over the same sequence of values as Stream, for
 // callers that prefer range over a callback. A read or decode error is
-// delivered as the second value of the final pair yielded; ranging over All
+// delivered as the second value of the final pair yielded; ranging over Iter
 // stops there unless the loop body already broke out on its own.
-func All[T any](r io.Reader) iter.Seq2[T, error] {
+func Iter[T any](r io.Reader) iter.Seq2[T, error] {
 	return func(yield func(T, error) bool) {
 		var zero T
 
-		cr := stdcsv.NewReader(r)
+		cr := csv.NewReader(r)
 		header, err := cr.Read()
 		if err == io.EOF {
 			return

@@ -8,6 +8,7 @@ import (
 	"iter"
 
 	"github.com/teghnet/x"
+	"github.com/teghnet/x/parse/json"
 )
 
 // ReadFS reads a JSON file and unmarshalls it into type T.
@@ -80,6 +81,6 @@ func JSONArray[T any](fsfs fs.FS, name string) iter.Seq2[T, error] {
 			return
 		}
 		defer x.ClosePrint(f)
-		ReadJSONArray[T](f)(yield)
+		json.IterArray[T](f)(yield)
 	}
 }

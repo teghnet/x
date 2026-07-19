@@ -10,8 +10,6 @@ import (
 	"iter"
 	"os"
 
-	"charm.land/log/v2"
-
 	"github.com/teghnet/x"
 )
 
@@ -88,7 +86,6 @@ func Array[T any](f io.Reader) iter.Seq[Result[T]] {
 		}
 	}
 }
-
 func dropToken(dec *json.Decoder, r json.Delim) error {
 	t, err := dec.Token()
 	if err != nil {
@@ -141,28 +138,6 @@ func ReadJSONList[T any](f io.Reader) iter.Seq2[T, error] {
 			if !yield(v, dec.Decode(&v)) {
 				return
 			}
-		}
-	}
-}
-
-// ReadJSONArray returns an iterator over an array
-// Deprecated: use Array.
-func ReadJSONArray[T any](f io.Reader) iter.Seq2[T, error] {
-	return func(yield func(T, error) bool) {
-		dec := json.NewDecoder(f)
-		if err := dropToken(dec, '['); err != nil {
-			log.Printf("failed to drop leading array token: %v", err)
-			return
-		}
-		for dec.More() {
-			var v T
-			if !yield(v, dec.Decode(&v)) {
-				return
-			}
-		}
-		if err := dropToken(dec, ']'); err != nil {
-			log.Printf("failed to drop trailing array token: %v", err)
-			return
 		}
 	}
 }

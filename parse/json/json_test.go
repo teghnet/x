@@ -93,7 +93,7 @@ func TestStreamCallbackError(t *testing.T) {
 
 func TestAll(t *testing.T) {
 	var sum int
-	for p, err := range All[point](strings.NewReader(`{"x":1}{"x":2} {"x":3}`)) {
+	for p, err := range Iter[point](strings.NewReader(`{"x":1}{"x":2} {"x":3}`)) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -107,7 +107,7 @@ func TestAll(t *testing.T) {
 func TestAllError(t *testing.T) {
 	var got []point
 	var gotErr error
-	for p, err := range All[point](strings.NewReader(`{"x":1}{"x":`)) {
+	for p, err := range Iter[point](strings.NewReader(`{"x":1}{"x":`)) {
 		if err != nil {
 			gotErr = err
 			break
@@ -124,7 +124,7 @@ func TestAllError(t *testing.T) {
 
 func TestAllBreak(t *testing.T) {
 	var seen int
-	for range All[point](strings.NewReader(`{"x":1}{"x":2}{"x":3}`)) {
+	for range Iter[point](strings.NewReader(`{"x":1}{"x":2}{"x":3}`)) {
 		seen++
 		break
 	}

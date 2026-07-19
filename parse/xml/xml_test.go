@@ -86,7 +86,7 @@ func TestStreamCallbackError(t *testing.T) {
 func TestAll(t *testing.T) {
 	doc := `<feed><item id="1"><name>a</name></item><item id="2"><name>b</name></item></feed>`
 	var ids []int
-	for it, err := range All[item](strings.NewReader(doc), "item") {
+	for it, err := range Iter[item](strings.NewReader(doc), "item") {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -100,7 +100,7 @@ func TestAll(t *testing.T) {
 func TestAllBreak(t *testing.T) {
 	doc := `<feed><item id="1"/><item id="2"/><item id="3"/></feed>`
 	var seen int
-	for range All[item](strings.NewReader(doc), "item") {
+	for range Iter[item](strings.NewReader(doc), "item") {
 		seen++
 		break
 	}

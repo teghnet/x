@@ -51,29 +51,79 @@ func ReadRows[T any](ctx context.Context, r *Reader, sheetRange string) iter.Seq
 
 		fieldByCol := headerFieldIndex(typ, resp.Values[0])
 
-		for _, row := range resp.Values[1:] {
-			var item T
-			v := reflect.ValueOf(&item).Elem()
-			var rowErr error
-			for col, fieldIdx := range fieldByCol {
-				if col >= len(row) {
-					continue
-				}
-				if err := setField(v.Field(fieldIdx), row[col]); err != nil {
-					rowErr = fmt.Errorf("field %s: %w", typ.Field(fieldIdx).Name, err)
-					break
-				}
+		decodeRows(typ, resp.Values[1:], fieldByCol, yield)
+	}
+}
+
+// ReadRowsDetectHeader behaves like ReadRows, but does not assume the
+// header row is the first row: it scans rows from the top of sheetRange
+// until it finds one whose cells cover every exported field of T (by
+// `json` tag or field name), then decodes every row after that one.
+func ReadRowsDetectHeader[T any](ctx context.Context, r *Reader, sheetRange string) iter.Seq2[T, error] {
+	return func(yield func(T, error) bool) {
+		var zero T
+		typ := reflect.TypeOf(zero)
+		if typ == nil || typ.Kind() != reflect.Struct {
+			yield(zero, fmt.Errorf("gsheets: ReadRowsDetectHeader requires a struct type, got %T", zero))
+			return
+		}
+
+		resp, err := r.service.Spreadsheets.Values.Get(r.spreadsheetID, sheetRange).Context(ctx).
+			ValueRenderOption("UNFORMATTED_VALUE").
+			Do()
+		if err != nil {
+			yield(zero, fmt.Errorf("spreadsheets.values.get: %w", err))
+			return
+		}
+		if len(resp.Values) == 0 {
+			return
+		}
+
+		nameToField := fieldNameIndex(typ)
+
+		headerRow := -1
+		var fieldByCol map[int]int
+		for i, row := range resp.Values {
+			cols := matchHeaderRow(nameToField, row)
+			if len(cols) == len(nameToField) {
+				headerRow, fieldByCol = i, cols
+				break
 			}
-			if !yield(item, rowErr) {
-				return
+		}
+		if headerRow < 0 {
+			yield(zero, fmt.Errorf("gsheets: no header row matching %s found in %s", typ, sheetRange))
+			return
+		}
+
+		decodeRows(typ, resp.Values[headerRow+1:], fieldByCol, yield)
+	}
+}
+
+// decodeRows decodes each row into a T using fieldByCol, yielding it until
+// yield returns false or rows are exhausted.
+func decodeRows[T any](typ reflect.Type, rows [][]any, fieldByCol map[int]int, yield func(T, error) bool) {
+	for _, row := range rows {
+		var item T
+		v := reflect.ValueOf(&item).Elem()
+		var rowErr error
+		for col, fieldIdx := range fieldByCol {
+			if col >= len(row) {
+				continue
 			}
+			if err := setField(v.Field(fieldIdx), row[col]); err != nil {
+				rowErr = fmt.Errorf("field %s: %w", typ.Field(fieldIdx).Name, err)
+				break
+			}
+		}
+		if !yield(item, rowErr) {
+			return
 		}
 	}
 }
 
-// headerFieldIndex maps a header row's column indexes to struct field
-// indexes, matching by `json` tag (or field name) case-insensitively.
-func headerFieldIndex(typ reflect.Type, header []any) map[int]int {
+// fieldNameIndex maps the lower-cased `json` tag (or field name) of each
+// exported field of typ to its field index.
+func fieldNameIndex(typ reflect.Type) map[string]int {
 	nameToField := make(map[string]int, typ.NumField())
 	for i := 0; i < typ.NumField(); i++ {
 		field := typ.Field(i)
@@ -91,7 +141,12 @@ func headerFieldIndex(typ reflect.Type, header []any) map[int]int {
 		}
 		nameToField[strings.ToLower(name)] = i
 	}
+	return nameToField
+}
 
+// matchHeaderRow maps a header row's column indexes to struct field
+// indexes using nameToField, matching case-insensitively.
+func matchHeaderRow(nameToField map[string]int, header []any) map[int]int {
 	colToField := make(map[int]int, len(header))
 	for col, h := range header {
 		if idx, ok := nameToField[strings.ToLower(fmt.Sprint(h))]; ok {
@@ -99,6 +154,12 @@ func headerFieldIndex(typ reflect.Type, header []any) map[int]int {
 		}
 	}
 	return colToField
+}
+
+// headerFieldIndex maps a header row's column indexes to struct field
+// indexes, matching by `json` tag (or field name) case-insensitively.
+func headerFieldIndex(typ reflect.Type, header []any) map[int]int {
+	return matchHeaderRow(fieldNameIndex(typ), header)
 }
 
 // setField assigns a raw cell value (string, float64 or bool, per the

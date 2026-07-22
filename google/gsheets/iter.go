@@ -45,6 +45,22 @@ func Spreadsheets(ctx context.Context, ds *drive.Service, driveID string) iter.S
 		}
 	}
 }
+func Sheets(ctx context.Context, ss *sheets.Service, spreadsheetID string) iter.Seq2[*sheets.Sheet, error] {
+	return func(yield func(*sheets.Sheet, error) bool) {
+		spreadSheets, err := ss.Spreadsheets.Get(NormalizeID(spreadsheetID)).Context(ctx).
+			Fields("sheets(properties(sheetId,title))").Do()
+		if err != nil {
+			yield(nil, err)
+			return
+		}
+		for _, sheet := range spreadSheets.Sheets {
+			if !yield(sheet, nil) {
+				return
+			}
+		}
+	}
+}
+
 func Rows(ctx context.Context, ss *sheets.Service, spreadsheetID, sheetRange string) iter.Seq2[[]any, error] {
 	return func(yield func([]any, error) bool) {
 		resp, err := ss.Spreadsheets.Values.Get(spreadsheetID, sheetRange).Context(ctx).

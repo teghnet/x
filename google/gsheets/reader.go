@@ -2,6 +2,7 @@ package gsheets
 
 import (
 	"context"
+	"encoding"
 	"fmt"
 	"iter"
 	"reflect"
@@ -11,25 +12,11 @@ import (
 	"google.golang.org/api/sheets/v4"
 )
 
-// Reader provides functionality to read data from Google Sheets.
-type Reader struct {
-	service       *sheets.Service
-	spreadsheetID string
-}
-
-// NewReader creates a new Reader for a given spreadsheet.
-func NewReader(client *sheets.Service, spreadsheetID string) *Reader {
-	return &Reader{
-		service:       client,
-		spreadsheetID: spreadsheetID,
-	}
-}
-
 // ReadRows streams rows from sheetRange, decoding each into a T.
 // The first row is treated as a header row and maps columns to struct
 // fields by `json` tag (falling back to the field name), mirroring the
 // header logic in toValueRange.
-func ReadRows[T any](ctx context.Context, r *Reader, sheetRange string) iter.Seq2[T, error] {
+func ReadRows[T any](ctx context.Context, ss *sheets.Service, spreadsheetID, sheetRange string) iter.Seq2[T, error] {
 	return func(yield func(T, error) bool) {
 		var zero T
 		typ := reflect.TypeOf(zero)
@@ -38,7 +25,7 @@ func ReadRows[T any](ctx context.Context, r *Reader, sheetRange string) iter.Seq
 			return
 		}
 
-		resp, err := r.service.Spreadsheets.Values.Get(r.spreadsheetID, sheetRange).Context(ctx).
+		resp, err := ss.Spreadsheets.Values.Get(spreadsheetID, sheetRange).Context(ctx).
 			ValueRenderOption("UNFORMATTED_VALUE").
 			Do()
 		if err != nil {
@@ -59,7 +46,7 @@ func ReadRows[T any](ctx context.Context, r *Reader, sheetRange string) iter.Seq
 // header row is the first row: it scans rows from the top of sheetRange
 // until it finds one whose cells cover every exported field of T (by
 // `json` tag or field name), then decodes every row after that one.
-func ReadRowsDetectHeader[T any](ctx context.Context, r *Reader, sheetRange string) iter.Seq2[T, error] {
+func ReadRowsDetectHeader[T any](ctx context.Context, ss *sheets.Service, spreadsheetID, sheetRange string) iter.Seq2[T, error] {
 	return func(yield func(T, error) bool) {
 		var zero T
 		typ := reflect.TypeOf(zero)
@@ -68,7 +55,7 @@ func ReadRowsDetectHeader[T any](ctx context.Context, r *Reader, sheetRange stri
 			return
 		}
 
-		resp, err := r.service.Spreadsheets.Values.Get(r.spreadsheetID, sheetRange).Context(ctx).
+		resp, err := ss.Spreadsheets.Values.Get(spreadsheetID, sheetRange).Context(ctx).
 			ValueRenderOption("UNFORMATTED_VALUE").
 			Do()
 		if err != nil {
@@ -164,55 +151,62 @@ func headerFieldIndex(typ reflect.Type, header []any) map[int]int {
 
 // setField assigns a raw cell value (string, float64 or bool, per the
 // Sheets API) onto a struct field, converting as needed.
-func setField(field reflect.Value, raw any) error {
-	if !field.CanSet() {
+func setField(fv reflect.Value, raw any) error {
+	if !fv.CanSet() {
 		return nil
 	}
-	switch field.Kind() {
+
+	if fv.CanAddr() {
+		if u, ok := fv.Addr().Interface().(encoding.TextUnmarshaler); ok {
+			return u.UnmarshalText([]byte(fmt.Sprint(raw)))
+		}
+	}
+
+	switch fv.Kind() {
 	case reflect.String:
-		field.SetString(fmt.Sprint(raw))
+		fv.SetString(fmt.Sprint(raw))
 	case reflect.Bool:
 		if b, ok := raw.(bool); ok {
-			field.SetBool(b)
+			fv.SetBool(b)
 			return nil
 		}
 		b, err := strconv.ParseBool(fmt.Sprint(raw))
 		if err != nil {
 			return err
 		}
-		field.SetBool(b)
+		fv.SetBool(b)
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		if f, ok := raw.(float64); ok {
-			field.SetInt(int64(f))
+			fv.SetInt(int64(f))
 			return nil
 		}
 		n, err := strconv.ParseInt(fmt.Sprint(raw), 10, 64)
 		if err != nil {
 			return err
 		}
-		field.SetInt(n)
+		fv.SetInt(n)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		if f, ok := raw.(float64); ok {
-			field.SetUint(uint64(f))
+			fv.SetUint(uint64(f))
 			return nil
 		}
 		n, err := strconv.ParseUint(fmt.Sprint(raw), 10, 64)
 		if err != nil {
 			return err
 		}
-		field.SetUint(n)
+		fv.SetUint(n)
 	case reflect.Float32, reflect.Float64:
 		if f, ok := raw.(float64); ok {
-			field.SetFloat(f)
+			fv.SetFloat(f)
 			return nil
 		}
 		f, err := strconv.ParseFloat(fmt.Sprint(raw), 64)
 		if err != nil {
 			return err
 		}
-		field.SetFloat(f)
+		fv.SetFloat(f)
 	default:
-		return fmt.Errorf("unsupported field kind %s", field.Kind())
+		return fmt.Errorf("unsupported field kind %s", fv.Kind())
 	}
 	return nil
 }

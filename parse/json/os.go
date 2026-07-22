@@ -10,9 +10,6 @@ import (
 	"github.com/teghnet/x"
 )
 
-func LogStore[T any](path string, v T) {
-	x.WarnErr(Store[T](path, v))
-}
 func Load[T any](path string) (v T, err error) {
 	r, err := os.Open(path)
 	if err != nil {
@@ -25,7 +22,21 @@ func Load[T any](path string) (v T, err error) {
 	defer x.Close(r)
 	return Decode[T](r)
 }
+
+func LogStore[T any](path string, v T) {
+	x.WarnErr(StorePretty[T](path, v))
+}
+
 func Store[T any](path string, v T) error {
+	file, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("parse/json: store: %w", err)
+	}
+	defer x.Close(file)
+	return Write(file, v)
+}
+
+func StorePretty[T any](path string, v T) error {
 	file, err := os.Create(path)
 	if err != nil {
 		return fmt.Errorf("parse/json: store: %w", err)

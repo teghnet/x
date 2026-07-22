@@ -22,17 +22,18 @@ func Decode(path string, v any) error {
 	return json.NewDecoder(r).Decode(&v)
 }
 
-type Result[T any] struct {
+type Res[T any] struct {
 	Val T
 	Err error
 }
 
-func (r Result[T]) Write(w io.Writer) error {
+func (r Res[T]) Write(w io.Writer) error {
 	if r.Err != nil {
 		return r.Err
 	}
 	return Write(w, r.Val)
 }
+
 func Load[T any](path string) (T, error) {
 	r, err := os.Open(path)
 	var v T
@@ -54,38 +55,39 @@ func Read[T any](r io.Reader) (T, error) {
 
 // List returns an iterator over newline-delimited JSON objects (JSONL)
 // from the provided io.Reader.
-func List[T any](f io.Reader) iter.Seq[Result[T]] {
-	return func(yield func(Result[T]) bool) {
+func List[T any](f io.Reader) iter.Seq[Res[T]] {
+	return func(yield func(Res[T]) bool) {
 		dec := json.NewDecoder(f)
 		for dec.More() {
 			var v T
-			if !yield(Result[T]{Val: v, Err: dec.Decode(&v)}) {
+			if !yield(Res[T]{Val: v, Err: dec.Decode(&v)}) {
 				return
 			}
 		}
 	}
 }
 
-func Array[T any](f io.Reader) iter.Seq[Result[T]] {
-	return func(yield func(Result[T]) bool) {
+func Array[T any](f io.Reader) iter.Seq[Res[T]] {
+	return func(yield func(Res[T]) bool) {
 		dec := json.NewDecoder(f)
 		if err := dropToken(dec, '['); err != nil {
-			_ = yield(Result[T]{Err: err})
+			_ = yield(Res[T]{Err: err})
 			return
 		}
 		for dec.More() {
 			var v T
-			if !yield(Result[T]{Val: v, Err: dec.Decode(&v)}) {
+			if !yield(Res[T]{Val: v, Err: dec.Decode(&v)}) {
 				return
 			}
 		}
 		if err := dropToken(dec, ']'); err != nil {
 			// it's debatable if we should return this error
-			_ = yield(Result[T]{Err: err})
+			_ = yield(Res[T]{Err: err})
 			return
 		}
 	}
 }
+
 func dropToken(dec *json.Decoder, r json.Delim) error {
 	t, err := dec.Token()
 	if err != nil {
@@ -129,7 +131,6 @@ func ReadJSON[T any](r io.Reader) (T, error) {
 
 // ReadJSONList returns an iterator over newline-delimited JSON objects (JSONL)
 // from the provided io.Reader.
-// Deprecated: use List.
 func ReadJSONList[T any](f io.Reader) iter.Seq2[T, error] {
 	return func(yield func(T, error) bool) {
 		dec := json.NewDecoder(f)
@@ -142,14 +143,10 @@ func ReadJSONList[T any](f io.Reader) iter.Seq2[T, error] {
 	}
 }
 
-// WriteJSON
-// Deprecated: use Write.
 func WriteJSON[T any](w io.Writer, v T) error {
 	return json.NewEncoder(w).Encode(&v)
 }
 
-// WritePrettyJSON
-// Deprecated: use WritePretty.
 func WritePrettyJSON[T any](w io.Writer, v T) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")

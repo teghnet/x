@@ -1,25 +1,41 @@
 package x
 
 import (
-	"strings"
+	"time"
 
 	"charm.land/lipgloss/v2"
 	"charm.land/log/v2"
 )
 
 // NoticeLevel sits between [log.DebugLevel] and [log.InfoLevel].
-const NoticeLevel log.Level = -1
+const (
+	NoticeLevel log.Level = -3
+	DoneLevel   log.Level = -2
+	SkipLevel   log.Level = -1
+)
 
 func init() {
 	styles := log.DefaultStyles()
 	styles.Levels[NoticeLevel] = lipgloss.NewStyle().
-		SetString(strings.ToUpper("notice")).
+		SetString("NOTICE").
 		Bold(true).
 		MaxWidth(4).
-		Foreground(lipgloss.Color("212"))
+		Foreground(lipgloss.Blue)
+	styles.Levels[DoneLevel] = lipgloss.NewStyle().
+		SetString("DONE").
+		Bold(true).
+		MaxWidth(4).
+		Foreground(lipgloss.Green)
+	styles.Levels[SkipLevel] = lipgloss.NewStyle().
+		SetString("SKIP").
+		Bold(true).
+		MaxWidth(4).
+		Foreground(lipgloss.White)
 	log.SetStyles(styles)
 
 	log.SetLevel(NoticeLevel)
+	log.SetTimeFormat(time.RFC3339)
+	log.SetReportTimestamp(false)
 }
 
 // Debug logs a debug message using the default logger.
@@ -27,6 +43,12 @@ func Debug(msg any, keyvals ...any) { log.Debug(msg, keyvals...) }
 
 // Notice logs a message at [NoticeLevel] using the default logger.
 func Notice(msg any, keyvals ...any) { log.Log(NoticeLevel, msg, keyvals...) }
+
+// Done logs a message at [SkipLevel] using the default logger.
+func Done(msg any, keyvals ...any) { log.Log(DoneLevel, msg, keyvals...) }
+
+// Skip logs a message at [SkipLevel] using the default logger.
+func Skip(msg any, keyvals ...any) { log.Log(SkipLevel, msg, keyvals...) }
 
 // Info logs an info message using the default logger.
 func Info(msg any, keyvals ...any) { log.Info(msg, keyvals...) }
@@ -49,6 +71,12 @@ func Debugf(format string, args ...any) { log.Debugf(format, args...) }
 // Noticef logs a formatted message at [NoticeLevel] using the default logger.
 func Noticef(format string, args ...any) { log.Logf(NoticeLevel, format, args...) }
 
+// Donef logs a formatted message at [DoneLevel] using the default logger.
+func Donef(format string, args ...any) { log.Logf(DoneLevel, format, args...) }
+
+// Skipf logs a formatted message at [SkipLevel] using the default logger.
+func Skipf(format string, args ...any) { log.Logf(SkipLevel, format, args...) }
+
 // Infof logs a formatted info message using the default logger.
 func Infof(format string, args ...any) { log.Infof(format, args...) }
 
@@ -69,6 +97,7 @@ func PrintErr(err error) {
 		Printf("err: %v", err)
 	}
 }
+
 func WarnErr(err error) {
 	if err != nil {
 		Warnf("err: %v", err)

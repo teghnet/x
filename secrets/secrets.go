@@ -23,13 +23,6 @@ import (
 	"os"
 )
 
-const (
-	File      = "file"
-	KeepassXC = "keepassXC"
-	Keyring   = "keyring"
-	Sealed    = "sealed"
-)
-
 var (
 	_ Provider = EnvProvider{}
 	_ Provider = FileProvider{}
@@ -53,20 +46,20 @@ type Config struct {
 	SealedPath     string `json:"sealed_path"`
 }
 
-// OpenSecrets picks a secrets.Provider from cfg.SecretsProvider. "sealed"
+// NewProvider picks a secrets.Provider from cfg.SecretsProvider. "sealed"
 // needs a passphrase, which is itself a secret: it comes from
 // ACCD_SECRETS_PASSPHRASE (env), never from config.json.
-func OpenSecrets(cfg Config) (Provider, error) {
+func NewProvider(cfg Config) (Provider, error) {
 	switch {
 	case cfg.FilePath != "":
-		return FileProvider{Path: cfg.FilePath}, nil
+		return NewFileProvider(cfg.FilePath), nil
 	case cfg.KeepassPath != "":
 		if cfg.Context == nil {
 			cfg.Context = context.Background()
 		}
 		return NewKeepassXCProvider(cfg.Context, cfg.KeepassPath), nil
 	case cfg.KeyringService != "":
-		return KeyringProvider{Service: cfg.KeyringService}, nil
+		return NewKeyringProvider(cfg.KeyringService), nil
 	case cfg.SealedPath != "":
 		pass := os.Getenv(EnvSecretsPassphrase)
 		if pass == "" {
@@ -74,6 +67,6 @@ func OpenSecrets(cfg Config) (Provider, error) {
 		}
 		return NewSealedProvider(cfg.SealedPath, pass)
 	default:
-		return EnvProvider{Prefix: EnvPrefix + "_"}, nil
+		return NewEnvProvider(EnvPrefix), nil
 	}
 }

@@ -6,7 +6,7 @@ import "testing"
 // (that's the point of this provider), so skip where no backend is
 // available instead of failing CI on headless/minimal Linux runners.
 func TestKeyringProvider(t *testing.T) {
-	p := KeyringProvider{Service: "accd-test"}
+	p := KeyringProvider{service: "accd-test"}
 	const key, val = "unit.test.key", "unit-test-value"
 
 	if err := p.Set(key, val); err != nil {

@@ -10,10 +10,14 @@ const (
 	EnvSecretsPassphrase = "ACCD_SECRETS_PASSPHRASE"
 )
 
-type EnvProvider struct{ Prefix string } // e.g. "ACCD_SECRET_"
+func NewEnvProvider(prefix string) *EnvProvider {
+	return &EnvProvider{prefix: prefix + "_"}
+}
+
+type EnvProvider struct{ prefix string }
 
 func (p EnvProvider) Get(key string) (string, error) {
-	env := p.Prefix + toEnv(key)
+	env := p.prefix + toEnv(key)
 	if v := os.Getenv(env); v != "" {
 		return v, nil
 	}

@@ -88,3 +88,8 @@ func (a *App) DataPath(s ...string) string {
 func (a *App) StatePath(s ...string) string {
 	return a.xdg.StatePath(s...)
 }
+
+// RuntimePath implements [paths.XDG]
+func (a *App) RuntimePath(s ...string) string {
+	return a.xdg.RuntimePath(s...)
+}

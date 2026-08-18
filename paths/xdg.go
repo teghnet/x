@@ -31,7 +31,7 @@ type XDG interface {
 	//   - Should default to `$HOME/.local/state`.
 	StatePath(...string) string
 
-	// - `XDG_RUNTIME_DIR`
+	// RuntimePath - `XDG_RUNTIME_DIR`
 	//   - Used for non-essential, user-specific data files such as sockets, named pipes, etc.
 	//   - Not required to have a default value; warnings should be issued if not set or equivalents provided.
 	//   - Must be owned by the user with an access mode of `0700`.
@@ -42,7 +42,8 @@ type XDG interface {
 	//   - Can only exist for the duration of the user's login.
 	//   - Should not store large files as it may be mounted as a tmpfs.
 	//   - pam_systemd sets this to `/run/user/$UID`.
-	//
+	RuntimePath(...string) string
+
 	// ### System directories
 	//
 	// - `XDG_DATA_DIRS`
@@ -101,27 +102,31 @@ func NewXDG(app string, opts ...ConfOpt) XDG {
 		errLog("NewXDG", mkDotDir(dirConfig))
 		errLog("NewXDG", mkDotDir(dirData))
 		errLog("NewXDG", mkDotDir(dirState))
+		errLog("NewXDG", mkDotDir(dirRuntime))
 	} else if c.mkLocalUnlessDefaultExist {
 		errLog("NewXDG", mkLocalAppDir(app))
 		errLog("NewXDG", mkLocalAppDir(app, dirCache))
 		errLog("NewXDG", mkLocalAppDir(app, dirConfig))
 		errLog("NewXDG", mkLocalAppDir(app, dirData))
 		errLog("NewXDG", mkLocalAppDir(app, dirState))
+		errLog("NewXDG", mkLocalAppDir(app, dirRuntime))
 	}
 	return xdg{
-		configHome: AppConfig(app),
-		dataHome:   AppData(app),
-		cacheHome:  AppCache(app),
-		stateHome:  AppState(app),
+		configHome:  AppConfig(app),
+		dataHome:    AppData(app),
+		cacheHome:   AppCache(app),
+		stateHome:   AppState(app),
+		runtimeHome: AppRuntime(app),
 	}
 }
 
 // XDG Base Directory paths
 type xdg struct {
-	configHome string
-	dataHome   string
-	cacheHome  string
-	stateHome  string
+	configHome  string
+	dataHome    string
+	cacheHome   string
+	stateHome   string
+	runtimeHome string
 }
 
 // ConfigPath configHome user-specific settings that you would want to preserve or back up.
@@ -149,6 +154,13 @@ func (x xdg) CachePath(elems ...string) string {
 // .local/state or $XDG_STATE_HOME/<app> or ~/.local/state/<app>
 func (x xdg) StatePath(elems ...string) string {
 	return filepath.Join(append([]string{x.stateHome}, elems...)...)
+}
+
+// RuntimePath runtimeHome non-essential runtime files such as sockets and named pipes.
+// Not guaranteed to persist beyond the user's login; see [AppRuntime].
+// .local/run or $XDG_RUNTIME_DIR/<app> or an equivalent/temporary directory.
+func (x xdg) RuntimePath(elems ...string) string {
+	return filepath.Join(append([]string{x.runtimeHome}, elems...)...)
 }
 
 // errLog logs err, prefixed with context, if err is non-nil.

@@ -5,6 +5,7 @@ package paths
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -24,6 +25,9 @@ func TestNewXDG_defaults(t *testing.T) {
 	if got, want := x.StatePath(), AppState("testapp"); got != want {
 		t.Errorf("StatePath() = %q, want %q", got, want)
 	}
+	if got, want := x.RuntimePath(), AppRuntime("testapp"); got != want {
+		t.Errorf("RuntimePath() = %q, want %q", got, want)
+	}
 }
 
 func TestNewXDG_preferWDStore(t *testing.T) {
@@ -41,6 +45,7 @@ func TestNewXDG_preferWDStore(t *testing.T) {
 		{"CachePath", x.CachePath(), dirCache},
 		{"DataPath", x.DataPath(), dirData},
 		{"StatePath", x.StatePath(), dirState},
+		{"RuntimePath", x.RuntimePath(), dirRuntime},
 	} {
 		want := filepath.Join(wd, "."+tt.dir)
 		if tt.got != want {
@@ -68,6 +73,7 @@ func TestNewXDG_preferDotLocalStore(t *testing.T) {
 		{"CachePath", x.CachePath(), dirCache},
 		{"DataPath", x.DataPath(), dirData},
 		{"StatePath", x.StatePath(), dirState},
+		{"RuntimePath", x.RuntimePath(), dirRuntime},
 	} {
 		want := filepath.Join(root, tt.dir)
 		if tt.got != want {
@@ -133,4 +139,40 @@ func TestAppState_relativeXDGStateHomePanics(t *testing.T) {
 		}
 	}()
 	AppState("testapp")
+}
+
+func TestAppRuntime_envOverride(t *testing.T) {
+	t.Chdir(t.TempDir())
+
+	runtimeHome := t.TempDir()
+	t.Setenv("XDG_RUNTIME_DIR", runtimeHome)
+
+	if got, want := AppRuntime("testapp"), filepath.Join(runtimeHome, "testapp"); got != want {
+		t.Errorf("AppRuntime() = %q, want %q", got, want)
+	}
+}
+
+func TestAppRuntime_relativeXDGRuntimeDirPanics(t *testing.T) {
+	t.Chdir(t.TempDir())
+	t.Setenv("XDG_RUNTIME_DIR", "relative/path")
+
+	defer func() {
+		if recover() == nil {
+			t.Errorf("expected panic for relative XDG_RUNTIME_DIR")
+		}
+	}()
+	AppRuntime("testapp")
+}
+
+func TestAppRuntime_fallsBackWhenUnset(t *testing.T) {
+	t.Chdir(t.TempDir())
+	t.Setenv("XDG_RUNTIME_DIR", "")
+
+	got := AppRuntime("testapp")
+	if !filepath.IsAbs(got) {
+		t.Errorf("AppRuntime() = %q, want an absolute path", got)
+	}
+	if !strings.HasSuffix(got, string(filepath.Separator)+"testapp") {
+		t.Errorf("AppRuntime() = %q, want it to end with /testapp", got)
+	}
 }

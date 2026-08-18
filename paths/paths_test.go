@@ -22,6 +22,7 @@ func TestPaths_App(t *testing.T) {
 		{"paths.AppCache", paths.AppCache},
 		{"paths.AppState", paths.AppState},
 		{"paths.AppData", paths.AppData},
+		{"paths.AppRuntime", paths.AppRuntime},
 	}
 	for _, tt := range tests {
 		t.Run(tt.n, func(t *testing.T) {

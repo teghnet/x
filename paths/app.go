@@ -5,16 +5,18 @@ package paths
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
 const (
-	dirCache  = "cache"
-	dirConfig = "config"
-	dirData   = "share"
-	dirState  = "state"
+	dirCache   = "cache"
+	dirConfig  = "config"
+	dirData    = "share"
+	dirState   = "state"
+	dirRuntime = "run"
 
 	dotLocal = ".local"
 )
@@ -27,11 +29,34 @@ type kind struct {
 }
 
 var (
-	kindConfig = kind{dirConfig, os.UserConfigDir}
-	kindCache  = kind{dirCache, os.UserCacheDir}
-	kindData   = kind{dirData, func() (string, error) { return xdgHome("XDG_DATA_HOME", dotLocal, dirData) }}
-	kindState  = kind{dirState, func() (string, error) { return xdgHome("XDG_STATE_HOME", dotLocal, dirState) }}
+	kindConfig  = kind{dirConfig, os.UserConfigDir}
+	kindCache   = kind{dirCache, os.UserCacheDir}
+	kindData    = kind{dirData, func() (string, error) { return xdgHome("XDG_DATA_HOME", dotLocal, dirData) }}
+	kindState   = kind{dirState, func() (string, error) { return xdgHome("XDG_STATE_HOME", dotLocal, dirState) }}
+	kindRuntime = kind{dirRuntime, runtimeHome}
 )
+
+// runtimeHome resolves the base directory for XDG_RUNTIME_DIR.
+//
+// Per the XDG spec this directory is not required to have a default value,
+// and a warning should be issued if it is not set (or an equivalent is used
+// instead). If XDG_RUNTIME_DIR is unset, this checks for the equivalent
+// pam_systemd sets (/run/user/$UID) before falling back to os.TempDir(),
+// logging a warning in either case.
+func runtimeHome() (string, error) {
+	if dir := os.Getenv("XDG_RUNTIME_DIR"); dir != "" {
+		if !filepath.IsAbs(dir) {
+			return "", fmt.Errorf("path in XDG_RUNTIME_DIR is relative")
+		}
+		return dir, nil
+	}
+	if dir := fmt.Sprintf("/run/user/%d", os.Getuid()); isDir(dir) {
+		log.Printf("paths: XDG_RUNTIME_DIR is not set; using equivalent %s", dir)
+		return dir, nil
+	}
+	log.Printf("paths: XDG_RUNTIME_DIR is not set and no equivalent was found; falling back to %s", os.TempDir())
+	return os.TempDir(), nil
+}
 
 // xdgHome returns the value of env if it is set and absolute, or
 // $HOME/rel otherwise. It returns an error for a relative env value,
@@ -103,6 +128,17 @@ func AppData(app string) string {
 // Not important or portable enough to the user to be stored in [AppData]
 func AppState(app string) string {
 	return appDir(app, kindState)
+}
+
+// AppRuntime returns the runtime directory path for the given app.
+// It checks for local dev directories first, then XDG_RUNTIME_DIR,
+// then falls back to an equivalent or temporary directory (see [runtimeHome]).
+//
+// XDG_RUNTIME_DIR stores non-essential, user-specific runtime files such as
+// sockets and named pipes. Unlike the other XDG directories it has no
+// standard default and is not guaranteed to persist beyond the user's login.
+func AppRuntime(app string) string {
+	return appDir(app, kindRuntime)
 }
 
 // localAppDir searches for a local application directory in the current working directory.

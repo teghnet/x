@@ -6,23 +6,15 @@ package paths
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 )
 
 func Test_localAppDir(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	// Save and restore original working directory.
-	origWd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { os.Chdir(origWd) })
-
-	dirsToCreate := []string{".local/app/dir", ".local/dir", ".dir/app", ".app/dir"}
+	dirsToCreate := []string{".local/app/dir", ".local/dir", ".dir", ".app/dir"}
 	tests := []struct {
 		name    string
-		dirs    []string // directories to create relative to tmpDir
+		dirs    []string // directories to create relative to WD
 		app     string
 		dir     string
 		wantSfx string // expected suffix of the returned path
@@ -45,11 +37,11 @@ func Test_localAppDir(t *testing.T) {
 			wantOK:  true,
 		},
 		{
-			name:    "falls back to .dir/app",
+			name:    "falls back to .dir",
 			dirs:    dirsToCreate[2:],
 			app:     "app",
 			dir:     "dir",
-			wantSfx: filepath.Join(".dir", "app"),
+			wantSfx: ".dir",
 			wantOK:  true,
 		},
 		{
@@ -67,51 +59,13 @@ func Test_localAppDir(t *testing.T) {
 			dir:    "dir",
 			wantOK: false,
 		},
-		// app == "" is a special case.
-		{
-			name:    "no app; prefers .local/app/dir",
-			dirs:    dirsToCreate[0:],
-			app:     "",
-			dir:     "dir",
-			wantSfx: filepath.Join(".local", "dir"),
-			wantOK:  true,
-		},
-		{
-			name:    "no app; falls back to .local/dir",
-			dirs:    dirsToCreate[1:],
-			app:     "",
-			dir:     "dir",
-			wantSfx: filepath.Join(".local", "dir"),
-			wantOK:  true,
-		},
-		{
-			name:    "no app; falls back to .dir",
-			dirs:    dirsToCreate[2:],
-			app:     "",
-			dir:     "dir",
-			wantSfx: filepath.Join(".dir"),
-			wantOK:  true,
-		},
-		{
-			name:   "no app; .dir NOT works at home",
-			dirs:   dirsToCreate[3:],
-			app:    "",
-			dir:    "dir",
-			wantOK: false,
-		},
-		{
-			name:   "no app; returns false when nothing exists",
-			dirs:   nil,
-			app:    "",
-			dir:    "dir",
-			wantOK: false,
-		},
 	}
 
-	for _, tt := range tests {
+	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Each subtest gets its own temp directory.
-			wd := filepath.Join(tmpDir, tt.name)
+			// Each subtest gets its own working directory; index-named so
+			// subtest names containing "/" or spaces don't shape real paths.
+			wd := filepath.Join(t.TempDir(), "case-"+strconv.Itoa(i))
 			if err := os.MkdirAll(wd, 0o755); err != nil {
 				t.Fatal(err)
 			}
@@ -120,9 +74,7 @@ func Test_localAppDir(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			if err := os.Chdir(wd); err != nil {
-				t.Fatal(err)
-			}
+			t.Chdir(wd)
 
 			got, ok := localAppDir(tt.app, tt.dir)
 			if ok != tt.wantOK {
@@ -137,4 +89,78 @@ func Test_localAppDir(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("panics on empty app name", func(t *testing.T) {
+		defer func() {
+			if recover() == nil {
+				t.Errorf("expected panic")
+			}
+		}()
+		localAppDir("", "dir")
+	})
+}
+
+func Test_mkLocalAppDir(t *testing.T) {
+	t.Run("valid app name does not panic and creates .<app>/<dir>", func(t *testing.T) {
+		wd := t.TempDir()
+		t.Chdir(wd)
+
+		if err := mkLocalAppDir("app", "dir"); err != nil {
+			t.Fatalf("mkLocalAppDir returned error: %v", err)
+		}
+		want := filepath.Join(wd, ".app", "dir")
+		if !isDir(want) {
+			t.Errorf("expected %q to exist and be a directory", want)
+		}
+	})
+
+	t.Run("panics on empty app name", func(t *testing.T) {
+		defer func() {
+			if recover() == nil {
+				t.Errorf("expected panic")
+			}
+		}()
+		_ = mkLocalAppDir("")
+	})
+
+	t.Run("refuses to create in $HOME", func(t *testing.T) {
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+		t.Chdir(home)
+
+		if err := mkLocalAppDir("app", "dir"); err == nil {
+			t.Errorf("expected error when working directory is $HOME")
+		}
+	})
+}
+
+func Test_mkDotDir(t *testing.T) {
+	t.Run("creates .<dir>", func(t *testing.T) {
+		wd := t.TempDir()
+		t.Chdir(wd)
+
+		if err := mkDotDir("dir"); err != nil {
+			t.Fatalf("mkDotDir returned error: %v", err)
+		}
+		want := filepath.Join(wd, ".dir")
+		if !isDir(want) {
+			t.Errorf("expected %q to exist and be a directory", want)
+		}
+	})
+
+	t.Run("errors on empty dir", func(t *testing.T) {
+		if err := mkDotDir(); err == nil {
+			t.Errorf("expected error for empty dir")
+		}
+	})
+
+	t.Run("refuses to create in $HOME", func(t *testing.T) {
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+		t.Chdir(home)
+
+		if err := mkDotDir("dir"); err == nil {
+			t.Errorf("expected error when working directory is $HOME")
+		}
+	})
 }

@@ -5,10 +5,9 @@ package paths
 
 import (
 	"log"
-	"path"
+	"path/filepath"
 )
 
-type XDGProvider func() XDG
 type XDG interface {
 	// ### User directories
 
@@ -61,48 +60,55 @@ type conf struct {
 }
 type ConfOpt func(*conf)
 
+// WithPreferWDStore controls whether NewXDG creates plain dot-directories
+// (.cache, .config, .share, .state) in the current working directory.
 func WithPreferWDStore(v bool) ConfOpt {
 	return func(c *conf) {
 		c.mkCurrentDirs = v
 	}
 }
+
+// WithPreferDotLocalStore controls whether NewXDG creates a local dev
+// directory (.local/<app> or .<app>) in the current working directory.
+//
+// If both WithPreferWDStore(true) and WithPreferDotLocalStore(true) are
+// passed, WithPreferWDStore wins: NewXDG only creates the plain dot-directories.
 func WithPreferDotLocalStore(v bool) ConfOpt {
 	return func(c *conf) {
 		c.mkLocalUnlessDefaultExist = v
 	}
 }
-func PreferCurrentDirs() ConfOpt {
-	return func(c *conf) {
-		c.mkCurrentDirs = true
-		c.mkLocalUnlessDefaultExist = false
-	}
-}
-func PreferLocalDirs() ConfOpt {
-	return func(c *conf) {
-		c.mkCurrentDirs = false
-		c.mkLocalUnlessDefaultExist = true
-	}
-}
 
+// NewXDG resolves the XDG base directories for app.
+//
+// Resolution is CWD-only: it probes the current working directory for a
+// matching local dev or dot-directory (see [AppConfig] and friends) and does
+// not walk up to parent directories. It falls back to the system XDG
+// locations (honoring XDG_CONFIG_HOME, XDG_CACHE_HOME, XDG_DATA_HOME, and
+// XDG_STATE_HOME) when no local directory is found.
+//
+// Depending on opts, NewXDG may create the directories it resolves to (see
+// [WithPreferWDStore] and [WithPreferDotLocalStore]); otherwise the returned
+// paths are not guaranteed to exist and callers should create them with
+// [EnsureDir] before use.
 func NewXDG(app string, opts ...ConfOpt) XDG {
 	c := conf{}
 	for _, opt := range opts {
 		opt(&c)
 	}
 	if c.mkCurrentDirs {
-		errLog(mkDotDir(dirCache))
-		errLog(mkDotDir(dirConfig))
-		errLog(mkDotDir(dirData))
-		errLog(mkDotDir(dirState))
+		errLog("NewXDG", mkDotDir(dirCache))
+		errLog("NewXDG", mkDotDir(dirConfig))
+		errLog("NewXDG", mkDotDir(dirData))
+		errLog("NewXDG", mkDotDir(dirState))
 	} else if c.mkLocalUnlessDefaultExist {
-		errLog(mkLocalAppDir(app))
-		errLog(mkLocalAppDir(app, dirCache))
-		errLog(mkLocalAppDir(app, dirConfig))
-		errLog(mkLocalAppDir(app, dirData))
-		errLog(mkLocalAppDir(app, dirState))
+		errLog("NewXDG", mkLocalAppDir(app))
+		errLog("NewXDG", mkLocalAppDir(app, dirCache))
+		errLog("NewXDG", mkLocalAppDir(app, dirConfig))
+		errLog("NewXDG", mkLocalAppDir(app, dirData))
+		errLog("NewXDG", mkLocalAppDir(app, dirState))
 	}
 	return xdg{
-		app:        App(app),
 		configHome: AppConfig(app),
 		dataHome:   AppData(app),
 		cacheHome:  AppCache(app),
@@ -112,46 +118,42 @@ func NewXDG(app string, opts ...ConfOpt) XDG {
 
 // XDG Base Directory paths
 type xdg struct {
-	app        string
 	configHome string
 	dataHome   string
 	cacheHome  string
 	stateHome  string
 }
 
-func (x xdg) App(elems ...string) string {
-	return path.Join(append([]string{x.app}, elems...)...)
-}
-
 // ConfigPath configHome user-specific settings that you would want to preserve or back up.
 // .local/config or $XDG_CONFIG_HOME/<app> or ~/.config/<app>
 func (x xdg) ConfigPath(elems ...string) string {
-	return path.Join(append([]string{x.configHome}, elems...)...)
+	return filepath.Join(append([]string{x.configHome}, elems...)...)
 }
 
 // DataPath dataHome for persistent data files that the application needs to function.
 // Examples: Game saves, local mail storage, browser extensions, icon sets, and custom fonts.
 // .local/share or $XDG_DATA_HOME/<app> or ~/.local/share/<app>
 func (x xdg) DataPath(elems ...string) string {
-	return path.Join(append([]string{x.dataHome}, elems...)...)
+	return filepath.Join(append([]string{x.dataHome}, elems...)...)
 }
 
 // CachePath cacheHome non-essential data that can be safely deleted without losing information.
 // Deleting this directory should only result in a slight speed penalty the next time you run the app.
 // .local/chache or $XDG_CACHE_HOME/<app> or ~/.cache/<app>
 func (x xdg) CachePath(elems ...string) string {
-	return path.Join(append([]string{x.cacheHome}, elems...)...)
+	return filepath.Join(append([]string{x.cacheHome}, elems...)...)
 }
 
 // StatePath stateHome temporary application state that should persist between restarts
 // but isn't a configuration or "data" in the traditional sense.
 // .local/state or $XDG_STATE_HOME/<app> or ~/.local/state/<app>
 func (x xdg) StatePath(elems ...string) string {
-	return path.Join(append([]string{x.stateHome}, elems...)...)
+	return filepath.Join(append([]string{x.stateHome}, elems...)...)
 }
 
-func errLog(err error) {
+// errLog logs err, prefixed with context, if err is non-nil.
+func errLog(context string, err error) {
 	if err != nil {
-		log.Print(err)
+		log.Printf("%s: %v", context, err)
 	}
 }

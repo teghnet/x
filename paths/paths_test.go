@@ -4,6 +4,7 @@
 package paths_test
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -11,6 +12,8 @@ import (
 )
 
 func TestPaths_App(t *testing.T) {
+	t.Chdir(t.TempDir()) // isolate from any .config/.cache/etc. in the real CWD
+
 	tests := []struct {
 		n string
 		f func(app string) string
@@ -23,7 +26,7 @@ func TestPaths_App(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.n, func(t *testing.T) {
 			p := tt.f("testapp")
-			if !strings.HasSuffix(p, "/testapp") {
+			if !strings.HasSuffix(p, string(filepath.Separator)+"testapp") {
 				t.Errorf("expected path to end with `testapp` name, got: %s", p)
 				return
 			}
@@ -43,6 +46,8 @@ func TestPaths_App(t *testing.T) {
 }
 
 func TestPaths_Profile(t *testing.T) {
+	t.Chdir(t.TempDir()) // isolate from any .config/.cache/etc. in the real CWD
+
 	tests := []struct {
 		n string
 		f func(app, profile string) string
@@ -55,7 +60,7 @@ func TestPaths_Profile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.n, func(t *testing.T) {
 			p := tt.f("testapp", "work")
-			if !strings.HasSuffix(p, "/work") {
+			if !strings.HasSuffix(p, string(filepath.Separator)+"work") {
 				t.Errorf("expected path to end with profile name `work`, got: %s", p)
 				return
 			}

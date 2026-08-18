@@ -10,10 +10,15 @@ import (
 
 const dirProfiles = "profiles"
 
-// ProfileConfig returns the config directory for a specific profile.
-// For local dev: .local/<profile> or .<app>/<profile>.
-// For system: ~/.config/<app>/profiles/<profile>.
-func ProfileConfig(app, profile string) string {
+// profileDir resolves the directory of the given kind for a profile of app.
+// It checks local dev directories in the working directory first — in
+// priority order, WD/.local/<profile>/<dir>, WD/.<app>/<profile>/<dir>, then
+// WD/.<dir>/<profile> — then falls back to <appDir(app, k)>/profiles/<profile>.
+//
+// Note: the local dev patterns are not namespaced by app beyond .<app>/...,
+// so two apps sharing a working directory and a profile name can collide on
+// WD/.local/<profile>/<dir> or WD/.<dir>/<profile>.
+func profileDir(app, profile string, k kind) string {
 	if app == "" {
 		panic("app name must be non-empty")
 	}
@@ -22,119 +27,50 @@ func ProfileConfig(app, profile string) string {
 	}
 
 	if wd, err := os.Getwd(); err == nil && !wdIsHome() {
-		dir := filepath.Join(wd, dotLocal, profile, dirConfig)
-		if info, err := os.Stat(dir); err == nil && info.IsDir() {
-			// Return WD/.local/<profile>/config
+		dir := filepath.Join(wd, dotLocal, profile, k.dir)
+		if isDir(dir) {
+			// Return WD/.local/<profile>/<dir>
 			return dir
 		}
-		dir = filepath.Join(wd, "."+app, profile, dirConfig)
-		if info, err := os.Stat(dir); err == nil && info.IsDir() {
-			// Return WD/.<app>/<profile>/config
+		dir = filepath.Join(wd, "."+app, profile, k.dir)
+		if isDir(dir) {
+			// Return WD/.<app>/<profile>/<dir>
 			return dir
 		}
-		dir = filepath.Join(wd, dotConfig, profile)
-		if info, err := os.Stat(dir); err == nil && info.IsDir() {
-			// Return WD/.config/<profile>
+		dir = filepath.Join(wd, "."+k.dir, profile)
+		if isDir(dir) {
+			// Return WD/.<dir>/<profile>
 			return dir
 		}
 	}
 
-	// System: ~/.config/<app>/profiles/<profile>
-	return filepath.Join(AppConfig(app), dirProfiles, profile)
+	return filepath.Join(appDir(app, k), dirProfiles, profile)
+}
+
+// ProfileConfig returns the config directory for a specific profile.
+// For local dev: .local/<profile>/config or .<app>/<profile>/config.
+// For system: ~/.config/<app>/profiles/<profile>.
+func ProfileConfig(app, profile string) string {
+	return profileDir(app, profile, kindConfig)
 }
 
 // ProfileCache returns the cache directory for a specific profile.
 // For local dev: .local/<profile>/cache or .<app>/<profile>/cache.
 // For system: ~/.cache/<app>/profiles/<profile>.
 func ProfileCache(app, profile string) string {
-	if app == "" {
-		panic("appName must be non-empty")
-	}
-	if profile == "" {
-		panic("profileName must be non-empty")
-	}
-
-	if wd, err := os.Getwd(); err == nil && !wdIsHome() {
-		dir := filepath.Join(wd, dotLocal, profile, dirCache)
-		if info, err := os.Stat(dir); err == nil && info.IsDir() {
-			// Return WD/.local/<profile>/cache
-			return dir
-		}
-		dir = filepath.Join(wd, "."+app, profile, dirCache)
-		if info, err := os.Stat(dir); err == nil && info.IsDir() {
-			// Return WD/.<app>/<profile>/cache
-			return dir
-		}
-		dir = filepath.Join(wd, dotCache, profile)
-		if info, err := os.Stat(dir); err == nil && info.IsDir() {
-			// Return WD/.cache/<profile>
-			return dir
-		}
-	}
-
-	return filepath.Join(AppCache(app), dirProfiles, profile)
+	return profileDir(app, profile, kindCache)
 }
 
 // ProfileData returns the data directory for a specific profile.
-// For local dev: .local/<profile>/data or .<app>/<profile>/data.
+// For local dev: .local/<profile>/share or .<app>/<profile>/share.
 // For system: ~/.local/share/<app>/profiles/<profile>.
 func ProfileData(app, profile string) string {
-	if app == "" {
-		panic("appName must be non-empty")
-	}
-	if profile == "" {
-		panic("profileName must be non-empty")
-	}
-
-	if wd, err := os.Getwd(); err == nil && !wdIsHome() {
-		dir := filepath.Join(wd, dotLocal, profile, dirData)
-		if info, err := os.Stat(dir); err == nil && info.IsDir() {
-			// Return WD/.local/<profile>/data
-			return dir
-		}
-		dir = filepath.Join(wd, "."+app, profile, dirData)
-		if info, err := os.Stat(dir); err == nil && info.IsDir() {
-			// Return WD/.<app>/<profile>/data
-			return dir
-		}
-		dir = filepath.Join(wd, dotData, profile)
-		if info, err := os.Stat(dir); err == nil && info.IsDir() {
-			// Return WD/.data/<profile>
-			return dir
-		}
-	}
-
-	return filepath.Join(AppData(app), dirProfiles, profile)
+	return profileDir(app, profile, kindData)
 }
 
 // ProfileState returns the state directory for a specific profile.
 // For local dev: .local/<profile>/state or .<app>/<profile>/state.
 // For system: ~/.local/state/<app>/profiles/<profile>.
 func ProfileState(app, profile string) string {
-	if app == "" {
-		panic("appName must be non-empty")
-	}
-	if profile == "" {
-		panic("profileName must be non-empty")
-	}
-
-	if wd, err := os.Getwd(); err == nil && !wdIsHome() {
-		dir := filepath.Join(wd, dotLocal, profile, dirState)
-		if info, err := os.Stat(dir); err == nil && info.IsDir() {
-			// Return WD/.local/<profile>/state
-			return dir
-		}
-		dir = filepath.Join(wd, "."+app, profile, dirState)
-		if info, err := os.Stat(dir); err == nil && info.IsDir() {
-			// Return WD/.<app>/<profile>/state
-			return dir
-		}
-		dir = filepath.Join(wd, dotState, profile)
-		if info, err := os.Stat(dir); err == nil && info.IsDir() {
-			// Return WD/.state/<profile>
-			return dir
-		}
-	}
-
-	return filepath.Join(AppState(app), dirProfiles, profile)
+	return profileDir(app, profile, kindState)
 }

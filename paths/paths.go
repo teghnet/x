@@ -47,7 +47,8 @@ package paths
 import (
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
+	"strings"
 )
 
 func sameDir(a, b string) bool {
@@ -63,22 +64,44 @@ func sameDir(a, b string) bool {
 }
 
 // wdIsHome checks if the working directory is in the user's home directory.
+// It fails closed: if the working directory or the home directory cannot be
+// determined, it reports true so that callers do not create dot-directories
+// in a location they cannot prove is safe.
 func wdIsHome() bool {
 	wd, err := os.Getwd()
 	if err != nil {
-		return false
+		return true
 	}
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return false
+		return true
 	}
 	return sameDir(wd, homeDir)
 }
 
+// isDir reports whether p exists and is a directory.
+func isDir(p string) bool {
+	info, err := os.Stat(p)
+	return err == nil && info.IsDir()
+}
+
+// nonEmpty returns dir with blank (whitespace-only) elements removed.
+func nonEmpty(dir []string) []string {
+	var dd []string
+	for _, d := range dir {
+		if strings.TrimSpace(d) != "" {
+			dd = append(dd, d)
+		}
+	}
+	return dd
+}
+
+// EnsureDir creates the directory joined from p (mode 0700, including parents)
+// and returns its path. It panics if the directory cannot be created.
 func EnsureDir(p ...string) string {
-	err := os.MkdirAll(path.Join(p...), 0700)
-	if err != nil {
+	dir := filepath.Join(p...)
+	if err := os.MkdirAll(dir, 0700); err != nil {
 		panic(fmt.Errorf("could not create directory: %w", err))
 	}
-	return path.Join(p...)
+	return dir
 }

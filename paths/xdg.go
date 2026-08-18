@@ -62,7 +62,7 @@ type conf struct {
 type ConfOpt func(*conf)
 
 // WithPreferWDStore controls whether NewXDG creates plain dot-directories
-// (.cache, .config, .share, .state) in the current working directory.
+// (.cache, .config, .share, .state, .run) in the current working directory.
 func WithPreferWDStore(v bool) ConfOpt {
 	return func(c *conf) {
 		c.mkCurrentDirs = v

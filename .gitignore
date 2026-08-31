@@ -16,6 +16,9 @@
 /.data/
 /.state/
 
+*.local.*
+.worktreeinclude
+
 # Go workspace file
 go.work
 go.work.sum

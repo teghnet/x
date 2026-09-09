@@ -15,10 +15,13 @@ import (
 )
 
 // newTestClient builds an *http.Client that sends requests to srv through a
-// Transport configured with opts, wired to srv's in-memory network.
-func newTestClient(srv *httptest.Server, opts ...Option) *http.Client {
-	base := append([]Option{WithBaseTransport(srv.Client().Transport)}, opts...)
-	return New(base...).Client()
+// Transport wired to srv's in-memory network, with mw installed as its
+// middleware chain.
+func newTestClient(srv *httptest.Server, mw ...Middleware) *http.Client {
+	return New(
+		WithBaseTransport(srv.Client().Transport),
+		WithMiddleware(mw...),
+	).Client()
 }
 
 func TestTransportRetriesOn5xxThenSucceeds(t *testing.T) {
@@ -32,7 +35,7 @@ func TestTransportRetriesOn5xxThenSucceeds(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		}))
 
-		client := newTestClient(srv, WithRetry(Backoff{Base: 10 * time.Millisecond, Factor: 2, MaxAttempts: 3}))
+		client := newTestClient(srv, Retry(Retrier{Backoff: Backoff{Base: 10 * time.Millisecond, Factor: 2, MaxAttempts: 3}}))
 		res, err := client.Get(srv.URL)
 		if err != nil {
 			t.Fatalf("Get: %v", err)
@@ -56,7 +59,7 @@ func TestTransportNoRetryOn4xx(t *testing.T) {
 			w.WriteHeader(http.StatusNotFound)
 		}))
 
-		client := newTestClient(srv, WithRetry(Backoff{Base: 10 * time.Millisecond, Factor: 2, MaxAttempts: 3}))
+		client := newTestClient(srv, Retry(Retrier{Backoff: Backoff{Base: 10 * time.Millisecond, Factor: 2, MaxAttempts: 3}}))
 		res, err := client.Get(srv.URL)
 		if err != nil {
 			t.Fatalf("Get: %v", err)
@@ -80,7 +83,7 @@ func TestTransportExhaustsRetriesAndReturnsLastError(t *testing.T) {
 			w.WriteHeader(http.StatusServiceUnavailable)
 		}))
 
-		client := newTestClient(srv, WithRetry(Backoff{Base: 10 * time.Millisecond, Factor: 2, MaxAttempts: 2}))
+		client := newTestClient(srv, Retry(Retrier{Backoff: Backoff{Base: 10 * time.Millisecond, Factor: 2, MaxAttempts: 2}}))
 		res, err := client.Get(srv.URL)
 		if err != nil {
 			t.Fatalf("Get: %v", err)
@@ -113,7 +116,7 @@ func TestTransportBodyReplayedViaGetBody(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		}))
 
-		client := newTestClient(srv, WithRetry(Backoff{Base: time.Millisecond, Factor: 1, MaxAttempts: 3}))
+		client := newTestClient(srv, Retry(Retrier{Backoff: Backoff{Base: time.Millisecond, Factor: 1, MaxAttempts: 3}}))
 		// http.NewRequest sets GetBody automatically for a strings.Reader,
 		// exercising the GetBody-per-attempt path.
 		req, err := http.NewRequest(http.MethodPost, srv.URL, strings.NewReader(payload))
@@ -152,7 +155,7 @@ func TestTransportBodyReplayedViaBuffering(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		}))
 
-		client := newTestClient(srv, WithRetry(Backoff{Base: time.Millisecond, Factor: 1, MaxAttempts: 3}))
+		client := newTestClient(srv, Retry(Retrier{Backoff: Backoff{Base: time.Millisecond, Factor: 1, MaxAttempts: 3}}))
 		req, err := http.NewRequest(http.MethodPost, srv.URL, io.NopCloser(bytes.NewReader([]byte(payload))))
 		if err != nil {
 			t.Fatalf("NewRequest: %v", err)
@@ -182,11 +185,11 @@ func TestTransportDoesNotMutateCallersRequest(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		}))
 
-		mutator := requestMutatorFunc(func(r *http.Request) error {
+		mutator := MutateRequest(func(r *http.Request) error {
 			r.Header.Set("X-Injected", "yes")
 			return nil
 		})
-		client := newTestClient(srv, WithRequestMutator(mutator))
+		client := newTestClient(srv, mutator)
 
 		req, err := http.NewRequest(http.MethodGet, srv.URL, nil)
 		if err != nil {
@@ -217,14 +220,16 @@ func TestTransportMutatorReappliedPerAttempt(t *testing.T) {
 		}))
 
 		var tokenCalls atomic.Int32
-		mutator := requestMutatorFunc(func(r *http.Request) error {
+		mutator := MutateRequest(func(r *http.Request) error {
 			n := tokenCalls.Add(1)
 			r.Header.Set("X-Token", string(rune('a'-1+int(n))))
 			return nil
 		})
 		client := newTestClient(srv,
-			WithRequestMutator(mutator),
-			WithRetry(Backoff{Base: time.Millisecond, Factor: 1, MaxAttempts: 3}),
+			// Retry is outermost, so it re-runs everything after it —
+			// including this mutator — on every attempt.
+			Retry(Retrier{Backoff: Backoff{Base: time.Millisecond, Factor: 1, MaxAttempts: 3}}),
+			mutator,
 		)
 
 		res, err := client.Get(srv.URL)
@@ -250,7 +255,7 @@ func TestTransportNonIdempotentMethodOnlyRetries429And503(t *testing.T) {
 				calls.Add(1)
 				w.WriteHeader(http.StatusInternalServerError)
 			}))
-			client := newTestClient(srv, WithRetry(Backoff{Base: time.Millisecond, Factor: 1, MaxAttempts: 3}))
+			client := newTestClient(srv, Retry(Retrier{Backoff: Backoff{Base: time.Millisecond, Factor: 1, MaxAttempts: 3}}))
 			res, err := client.Post(srv.URL, "text/plain", nil)
 			if err != nil {
 				t.Fatalf("Post: %v", err)
@@ -272,7 +277,7 @@ func TestTransportNonIdempotentMethodOnlyRetries429And503(t *testing.T) {
 				}
 				w.WriteHeader(http.StatusOK)
 			}))
-			client := newTestClient(srv, WithRetry(Backoff{Base: time.Millisecond, Factor: 1, MaxAttempts: 3}))
+			client := newTestClient(srv, Retry(Retrier{Backoff: Backoff{Base: time.Millisecond, Factor: 1, MaxAttempts: 3}}))
 			res, err := client.Post(srv.URL, "text/plain", nil)
 			if err != nil {
 				t.Fatalf("Post: %v", err)
@@ -297,11 +302,11 @@ func TestTransportRetryAfterSecondsIsHonoredAndClamped(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		}))
 
-		var retries []Retry
-		client := newTestClient(srv,
-			WithRetry(Backoff{Base: time.Millisecond, Factor: 1, Max: 2 * time.Second, MaxAttempts: 1}),
-			WithOnRetry(func(r Retry) { retries = append(retries, r) }),
-		)
+		var retries []RetryEvent
+		client := newTestClient(srv, Retry(Retrier{
+			Backoff: Backoff{Base: time.Millisecond, Factor: 1, Max: 2 * time.Second, MaxAttempts: 1},
+			OnRetry: func(r RetryEvent) { retries = append(retries, r) },
+		}))
 		start := time.Now()
 		res, err := client.Get(srv.URL)
 		if err != nil {
@@ -313,7 +318,7 @@ func TestTransportRetryAfterSecondsIsHonoredAndClamped(t *testing.T) {
 			t.Fatalf("len(retries) = %d, want 1", len(retries))
 		}
 		if retries[0].Delay != 2*time.Second {
-			t.Errorf("Retry.Delay = %v, want 2s (clamped to Backoff.Max)", retries[0].Delay)
+			t.Errorf("RetryEvent.Delay = %v, want 2s (clamped to Backoff.Max)", retries[0].Delay)
 		}
 		if elapsed := time.Since(start); elapsed != 2*time.Second {
 			t.Errorf("elapsed = %v, want exactly 2s", elapsed)
@@ -333,7 +338,7 @@ func TestTransportRetryAfterHTTPDateIsHonored(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		}))
 
-		client := newTestClient(srv, WithRetry(Backoff{Base: time.Millisecond, Factor: 1, MaxAttempts: 1}))
+		client := newTestClient(srv, Retry(Retrier{Backoff: Backoff{Base: time.Millisecond, Factor: 1, MaxAttempts: 1}}))
 		start := time.Now()
 		res, err := client.Get(srv.URL)
 		if err != nil {
@@ -354,7 +359,7 @@ func TestTransportContextCancellationDuringBackoff(t *testing.T) {
 			w.WriteHeader(http.StatusInternalServerError)
 		}))
 
-		client := newTestClient(srv, WithRetry(Backoff{Base: time.Minute, Factor: 1, MaxAttempts: 5}))
+		client := newTestClient(srv, Retry(Retrier{Backoff: Backoff{Base: time.Minute, Factor: 1, MaxAttempts: 5}}))
 		ctx, cancel := context.WithCancel(context.Background())
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL, nil)
 		if err != nil {
@@ -374,11 +379,6 @@ func TestTransportContextCancellationDuringBackoff(t *testing.T) {
 		}
 	})
 }
-
-// requestMutatorFunc adapts a func to RequestMutator.
-type requestMutatorFunc func(*http.Request) error
-
-func (f requestMutatorFunc) ApplyTo(r *http.Request) error { return f(r) }
 
 func TestDiscardResponseDrainsAndCloses(t *testing.T) {
 	body := &trackedBody{Reader: strings.NewReader(strings.Repeat("x", 1000))}

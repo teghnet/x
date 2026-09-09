@@ -1,3 +1,11 @@
+// Package transport provides retry, backoff, and rate-limiting policies for
+// clients of remote endpoints.
+//
+// [Policy] and [Policy.Do] are protocol-agnostic: they know nothing about
+// HTTP and can drive retries for any request/response pair, such as a gRPC
+// call, a database round trip, or an SFTP transfer. This file builds an
+// [http.RoundTripper] on top of Policy for HTTP specifically; use
+// [Policy.Do] directly to wrap other kinds of connectors.
 package transport
 
 import (
@@ -5,20 +13,29 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"math/rand/v2"
 	"net/http"
-	"time"
 )
 
-func New(opts ...Option) http.RoundTripper {
-	t := &transport{
-		base:      http.DefaultTransport,
-		mutator:   nil,
-		limiter:   defaultLimiter,
-		backoff:   defaultBackoff,
-		retryable: defaultRetryable,
-		sleep:     defaultSleeper,
-		jitter:    rand.Float64,
+// errPrefix identifies errors originating from this package.
+const errPrefix = "transport"
+
+// maxDiscardBody caps how much of a discarded response body Transport will
+// read before closing it, so a large or adversarial error body can't be
+// used to stall or exhaust memory on retry. Bodies longer than this may
+// prevent the underlying connection from being reused, which is an
+// acceptable trade-off against an unbounded read.
+const maxDiscardBody = 64 * 1024
+
+// New builds an [http.RoundTripper] that layers rate limiting, retries with
+// backoff, and request mutation over base (http.DefaultTransport unless
+// overridden by [WithBaseTransport]). By default it makes no retries and
+// applies no rate limit; use [WithRetry] and [WithRateLimit] to enable
+// them.
+func New(opts ...Option) *Transport {
+	t := &Transport{base: http.DefaultTransport}
+	t.policy.Backoff = DefaultBackoff
+	t.retryable = func(method string) Classifier[*http.Response] {
+		return RetryableHTTP(method, t.policy.Backoff.Max)
 	}
 	for _, opt := range opts {
 		opt(t)
@@ -26,152 +43,141 @@ func New(opts ...Option) http.RoundTripper {
 	return t
 }
 
-type transport struct {
+// Transport is an [http.RoundTripper] that retries failed requests with
+// backoff, optionally rate-limits attempts, and can mutate each outgoing
+// request (for example, to inject credentials). Build one with [New].
+type Transport struct {
 	base    http.RoundTripper
 	mutator RequestMutator
 
-	limiter *limiter
-	backoff *backoff
+	policy Policy
 
-	retryable func(*http.Response, error) bool
-	sleep     func(context.Context, time.Duration) error
-	jitter    func() float64
+	// retryable derives the retry [Classifier] for a request's method, so
+	// the default can apply method-aware idempotency rules ([RetryableHTTP])
+	// while [WithRetryable] can still install a fixed classifier.
+	retryable func(method string) Classifier[*http.Response]
 }
 
-// RoundTrip implements http.RoundTripper.
-func (t *transport) RoundTrip(req *http.Request) (*http.Response, error) {
-	if t.mutator != nil {
-		req = req.Clone(req.Context())
-		err := t.mutator.ApplyTo(req)
+// Client returns an [http.Client] using t as its transport. Most callers
+// want this rather than using t directly.
+func (t *Transport) Client() *http.Client {
+	return &http.Client{Transport: t}
+}
+
+// RoundTrip implements [http.RoundTripper]. It never modifies req; each
+// attempt operates on a clone.
+func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
+	maxAttempts := max(t.policy.Backoff.MaxAttempts, 0)
+
+	// Buffer the body only when there might be more than one attempt and
+	// the request can't hand us a fresh reader itself via GetBody.
+	var body []byte
+	if maxAttempts > 0 && req.GetBody == nil && req.Body != nil && req.Body != http.NoBody {
+		b, err := io.ReadAll(req.Body)
+		req.Body.Close()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%s: read body: %w", errPrefix, err)
 		}
+		body = b
 	}
 
-	body, err := bufferBody(req)
+	classify := t.retryable(req.Method)
+
+	attempt := func(ctx context.Context) (*http.Response, error) {
+		areq := req.Clone(ctx)
+		switch {
+		case maxAttempts <= 0:
+			// Single attempt: areq.Body already carries req's original
+			// reader via the shallow copy Clone performs.
+		case req.GetBody != nil:
+			rc, err := req.GetBody()
+			if err != nil {
+				return nil, fmt.Errorf("%s: get body: %w", errPrefix, err)
+			}
+			areq.Body = rc
+		case body != nil:
+			areq.Body = io.NopCloser(bytes.NewReader(body))
+		}
+		if t.mutator != nil {
+			if err := t.mutator.ApplyTo(areq); err != nil {
+				return nil, fmt.Errorf("%s: mutate request: %w", errPrefix, err)
+			}
+		}
+		return t.base.RoundTrip(areq)
+	}
+
+	res, err := t.policy.Do(req.Context(), classify, discardResponse, attempt)
 	if err != nil {
-		return nil, err
-	}
-
-	attempts := max(t.backoff.maxAttempts, 0)
-
-	var res *http.Response
-	var lastErr error
-	for attempt := 0; ; attempt++ {
-		if err := req.Context().Err(); err != nil {
-			return nil, err
-		}
-		// Rate-limit each attempt.
-		if err := t.limiter.wait(req.Context()); err != nil {
-			return nil, err
-		}
-		// Restore the body for this attempt.
-		if body != nil {
-			req.Body = io.NopCloser(bytes.NewReader(body))
-		}
-
-		res, lastErr = t.base.RoundTrip(req)
-
-		if attempt >= attempts || !t.retryable(res, lastErr) {
-			break
-		}
-		// Drain and close the response body before retrying so the connection
-		// can be reused.
-		if res != nil {
-			io.Copy(io.Discard, res.Body)
-			res.Body.Close()
-		}
-		delay := t.backoffDelay(res, attempt)
-		if err := t.sleep(req.Context(), delay); err != nil {
-			return nil, err
-		}
-	}
-	if lastErr != nil {
-		return nil, fmt.Errorf("client: request failed: %w", lastErr)
+		return nil, fmt.Errorf("%s: %w", errPrefix, err)
 	}
 	return res, nil
 }
 
-// backoffDelay honors a Retry-After header when present, otherwise uses the
-// jittered exponential backoff.
-func (t *transport) backoffDelay(res *http.Response, attempt int) time.Duration {
-	if res != nil {
-		if ra := res.Header.Get("Retry-After"); ra != "" {
-			if secs, err := time.ParseDuration(ra + "s"); err == nil && secs > 0 {
-				return secs
-			}
-		}
+// discardResponse drains and closes res.Body (bounded by maxDiscardBody) so
+// the connection can be reused before a retry. It is a no-op for a nil
+// response or a nil body, which a custom base [http.RoundTripper] may
+// return.
+func discardResponse(res *http.Response) {
+	if res == nil || res.Body == nil {
+		return
 	}
-	frac := 0.5
-	if t.jitter != nil {
-		frac = t.jitter()
-	}
-	// Full jitter around the exponential delay, with a floor of half the base
-	// so we always wait a little.
-	base := t.backoff.delay(attempt)
-	jittered := max(t.backoff.jitter(attempt, frac), base/2)
-	return jittered
+	io.CopyN(io.Discard, res.Body, maxDiscardBody) //nolint:errcheck // best-effort drain before Close
+	res.Body.Close()
 }
 
+// RequestMutator applies a change to an outgoing request, such as setting
+// an Authorization header. It is invoked on a fresh clone before every
+// attempt — including retries — so a mutator backed by a refreshable
+// credential (an OAuth2 token source, say) is re-consulted each time.
 type RequestMutator interface {
 	ApplyTo(*http.Request) error
 }
 
-// bufferBody reads and returns the request body so it can be replayed on retry.
-// It returns nil for bodiless requests.
-func bufferBody(req *http.Request) ([]byte, error) {
-	if req.Body == nil || req.Body == http.NoBody {
-		return nil, nil
-	}
-	if req.GetBody != nil {
-		// Prefer the caller-provided replay source.
-		rc, err := req.GetBody()
-		if err != nil {
-			return nil, fmt.Errorf("client: get body: %w", err)
-		}
-		defer rc.Close()
-		return io.ReadAll(rc)
-	}
-	data, err := io.ReadAll(req.Body)
-	req.Body.Close()
-	if err != nil {
-		return nil, fmt.Errorf("client: read body: %w", err)
-	}
-	return data, nil
-}
+// Option configures a [Transport] built by [New].
+type Option func(*Transport)
 
-type Option func(*transport)
-
-// WithBaseTransport sets the underlying transport, typically an *auth.Transport
-// so that credentials are injected. Defaults to http.DefaultTransport.
+// WithBaseTransport sets the underlying transport, typically an
+// authenticating transport so credentials are injected. Defaults to
+// http.DefaultTransport.
 func WithBaseTransport(rt http.RoundTripper) Option {
-	return func(t *transport) { t.base = rt }
+	return func(t *Transport) { t.base = rt }
 }
 
-// WithRateLimit limits requests to rps per second with the given burst. A
-// non-positive rps disables rate limiting.
+// WithRateLimit limits attempts to rps per second with the given burst. A
+// non-positive rps disables rate limiting (the default).
 func WithRateLimit(rps float64, burst int) Option {
-	return func(t *transport) {
+	return func(t *Transport) {
 		if rps > 0 {
-			t.limiter = newLimiter(rps, burst)
+			t.policy.Limiter = NewLimiter(rps, burst)
+		} else {
+			t.policy.Limiter = nil
 		}
 	}
 }
 
-// WithRetry sets the backoff policy for retries. Use backoff.Policy{} to disable.
-func WithRetry(p *backoff) Option {
-	if p == nil {
-		panic("nil backoff")
+// WithRetry sets the backoff policy for retries. Use Backoff{} to disable
+// retries entirely.
+func WithRetry(b Backoff) Option {
+	return func(t *Transport) { t.policy.Backoff = b }
+}
+
+// WithRetryable overrides the classifier deciding whether a response/error
+// should be retried, replacing [RetryableHTTP]'s method-aware default with
+// a single classifier used for every request regardless of method.
+func WithRetryable(classify Classifier[*http.Response]) Option {
+	return func(t *Transport) {
+		t.retryable = func(string) Classifier[*http.Response] { return classify }
 	}
-	return func(t *transport) { t.backoff = p }
 }
 
-// WithRetryable overrides the predicate deciding whether a response/error should
-// be retried. The default retries connection errors and 429/5xx responses.
-func WithRetryable(fn func(*http.Response, error) bool) Option {
-	return func(t *transport) { t.retryable = fn }
+// WithOnRetry sets a hook called before each retry, for logging (e.g. via
+// log/slog) or metrics. It must not block.
+func WithOnRetry(fn func(Retry)) Option {
+	return func(t *Transport) { t.policy.OnRetry = fn }
 }
 
-func WithRequestMutator(h RequestMutator) Option {
-	return func(t *transport) { t.mutator = h }
+// WithRequestMutator sets the mutator applied to a clone of each outgoing
+// request before it is sent.
+func WithRequestMutator(m RequestMutator) Option {
+	return func(t *Transport) { t.mutator = m }
 }

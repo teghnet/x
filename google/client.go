@@ -37,9 +37,7 @@ func Client(ctx context.Context, xdg paths.XDG, scope ...string) (*http.Client, 
 	if err != nil {
 		return nil, err
 	}
-	return &http.Client{
-		Transport: transport.New(
-			transport.WithRequestMutator(oauth.RequestMutator(ts)),
-		),
-	}, nil
+	return transport.New(
+		transport.WithRequestMutator(oauth.RequestMutator(ts)),
+	).Client(), nil
 }

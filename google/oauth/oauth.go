@@ -25,7 +25,7 @@ type oAuth2TokenSource struct {
 
 // ApplyTo sets the Authorization header on the given request.
 // Implements [transport.RequestMutator].
-func (ts oAuth2TokenSource) ApplyTo(r *http.Request) error {
+func (ts *oAuth2TokenSource) ApplyTo(r *http.Request) error {
 	token, err := ts.ts.Token()
 	if err != nil {
 		return err

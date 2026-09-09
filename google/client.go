@@ -38,6 +38,9 @@ func Client(ctx context.Context, xdg paths.XDG, scope ...string) (*http.Client, 
 		return nil, err
 	}
 	return transport.New(
-		transport.WithRequestMutator(oauth.RequestMutator(ts)),
+		transport.WithMiddleware(
+			transport.Retry(transport.Retrier{Backoff: transport.DefaultBackoff}),
+			oauth.Middleware(ts),
+		),
 	).Client(), nil
 }

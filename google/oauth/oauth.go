@@ -15,21 +15,18 @@ var ScopesAll = []string{
 	oauth2v2.UserinfoProfileScope,
 }
 
-func RequestMutator(ts oauth2.TokenSource) transport.RequestMutator {
-	return &oAuth2TokenSource{ts: ts}
-}
-
-type oAuth2TokenSource struct {
-	ts oauth2.TokenSource
-}
-
-// ApplyTo sets the Authorization header on the given request.
-// Implements [transport.RequestMutator].
-func (ts *oAuth2TokenSource) ApplyTo(r *http.Request) error {
-	token, err := ts.ts.Token()
-	if err != nil {
-		return err
-	}
-	token.SetAuthHeader(r)
-	return nil
+// Middleware returns a [transport.Middleware] that sets the Authorization
+// header on each outgoing request from a token minted by ts. Because
+// [transport.Retry] re-applies the chain's middleware on every attempt,
+// wrapping this in a Transport with retries enabled re-mints the token on
+// each retry rather than reusing one that may have expired.
+func Middleware(ts oauth2.TokenSource) transport.Middleware {
+	return transport.MutateRequest(func(r *http.Request) error {
+		token, err := ts.Token()
+		if err != nil {
+			return err
+		}
+		token.SetAuthHeader(r)
+		return nil
+	})
 }

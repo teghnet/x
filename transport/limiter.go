@@ -6,45 +6,40 @@ import (
 	"time"
 )
 
-var defaultLimiter = newLimiter(10, 5)
-
-// newLimiter builds a limiter allowing rate requests per second with the given
-// burst. A rate <= 0 disables limiting (wait always returns immediately).
-func newLimiter(rate float64, burst int) *limiter {
+// NewLimiter builds a Limiter allowing rate requests per second with the
+// given burst. A rate <= 0 disables limiting (Wait always returns
+// immediately, modulo ctx).
+func NewLimiter(rate float64, burst int) *Limiter {
 	b := float64(burst)
 	if b < 1 {
 		b = 1
 	}
-	return &limiter{
+	return &Limiter{
 		rate:   rate,
 		burst:  b,
 		tokens: b,
-		now:    time.Now,
-		sleep:  defaultSleeper,
 	}
 }
 
-// limiter is a token-bucket rate limiter. Tokens refill continuously at a fixed
-// rate up to a burst capacity. It avoids a background goroutine by computing
-// available tokens lazily from elapsed time.
-type limiter struct {
+// Limiter is a token-bucket rate limiter. Tokens refill continuously at a
+// fixed rate up to a burst capacity. It avoids a background goroutine by
+// computing available tokens lazily from elapsed time.
+type Limiter struct {
 	mu     sync.Mutex
 	rate   float64   // tokens per second
 	burst  float64   // maximum tokens
 	tokens float64   // current tokens
 	last   time.Time // last refill time
-	now    func() time.Time
-	sleep  func(context.Context, time.Duration) error
 }
 
-// wait blocks until a token is available or ctx is canceled.
-func (l *limiter) wait(ctx context.Context) error {
+// Wait blocks until a token is available or ctx is done.
+func (l *Limiter) Wait(ctx context.Context) error {
 	if l == nil || l.rate <= 0 {
 		return ctx.Err()
 	}
 	for {
 		l.mu.Lock()
-		now := l.now()
+		now := time.Now()
 		if l.last.IsZero() {
 			l.last = now
 		}
@@ -62,9 +57,13 @@ func (l *limiter) wait(ctx context.Context) error {
 		// Time until the next whole token.
 		deficit := 1 - l.tokens
 		wait := time.Duration(deficit / l.rate * float64(time.Second))
+		// Release the mutex before sleeping: mutex contention alone is not
+		// durably blocking under testing/synctest, so holding this lock
+		// while sleeping would prevent a synctest bubble's fake clock from
+		// advancing.
 		l.mu.Unlock()
 
-		if err := l.sleep(ctx, wait); err != nil {
+		if err := sleep(ctx, wait); err != nil {
 			return err
 		}
 	}

@@ -24,8 +24,8 @@ type Classifier[T any] func(T, error) Decision
 // the underlying connection can be reused. May be nil.
 type Discarder[T any] func(T)
 
-// Retry describes a retry Policy.Do is about to make.
-type Retry struct {
+// RetryEvent describes a retry Policy.Do is about to make.
+type RetryEvent struct {
 	// Attempt is the number of the attempt that just failed, starting at 0.
 	Attempt int
 	// Delay is how long Policy.Do will wait before the next attempt.
@@ -35,16 +35,16 @@ type Retry struct {
 }
 
 // Policy governs a sequence of attempts against a remote endpoint: how many
-// times to retry, how long to wait between attempts, and how fast attempts
-// may be made. The zero value makes a single attempt with no rate limit.
+// times to retry and how long to wait between attempts. The zero value
+// makes a single attempt. Rate limiting is not Policy's concern — a caller
+// that wants it composes its own attempt closure around a [Limiter] (the
+// HTTP layer does this via the [RateLimit] middleware).
 type Policy struct {
 	// Backoff controls retry timing and count.
 	Backoff Backoff
-	// Limiter caps the rate of attempts. Nil means unlimited.
-	Limiter *Limiter
 	// OnRetry, if set, is called before each retry — a natural hook for
 	// logging (e.g. via log/slog) or metrics. It must not block.
-	OnRetry func(Retry)
+	OnRetry func(RetryEvent)
 }
 
 // Do runs fn, retrying according to p until classify reports no more
@@ -71,10 +71,6 @@ func (p Policy) Do[T any](
 			var zero T
 			return zero, err
 		}
-		if err := p.Limiter.Wait(ctx); err != nil {
-			var zero T
-			return zero, err
-		}
 
 		result, lastErr = fn(ctx)
 		decision := classify(result, lastErr)
@@ -91,7 +87,7 @@ func (p Policy) Do[T any](
 			delay = p.Backoff.Jitter(attempt, rand.Float64())
 		}
 		if p.OnRetry != nil {
-			p.OnRetry(Retry{Attempt: attempt, Delay: delay, Err: lastErr})
+			p.OnRetry(RetryEvent{Attempt: attempt, Delay: delay, Err: lastErr})
 		}
 		if err := sleep(ctx, delay); err != nil {
 			var zero T

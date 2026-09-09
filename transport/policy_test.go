@@ -120,10 +120,10 @@ func TestPolicyDoCallsDiscarderBeforeRetry(t *testing.T) {
 
 func TestPolicyDoOnRetryFiresWithAttemptAndDelay(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		var retries []Retry
+		var retries []RetryEvent
 		p := Policy{
 			Backoff: Backoff{Base: time.Second, Factor: 1, MaxAttempts: 2},
-			OnRetry: func(r Retry) { retries = append(retries, r) },
+			OnRetry: func(r RetryEvent) { retries = append(retries, r) },
 		}
 		classify := func(j job, err error) Decision { return Decision{Retry: err != nil} }
 		_, _ = p.Do(context.Background(), classify, nil, func(ctx context.Context) (job, error) {
@@ -137,7 +137,7 @@ func TestPolicyDoOnRetryFiresWithAttemptAndDelay(t *testing.T) {
 		}
 		for _, r := range retries {
 			if !errors.Is(r.Err, errTransient) {
-				t.Errorf("Retry.Err = %v, want errTransient", r.Err)
+				t.Errorf("RetryEvent.Err = %v, want errTransient", r.Err)
 			}
 		}
 	})
@@ -165,28 +165,6 @@ func TestPolicyDoRespectsContextCancellation(t *testing.T) {
 		}
 		if calls != 1 {
 			t.Errorf("calls = %d, want 1 (cancel during backoff sleep)", calls)
-		}
-	})
-}
-
-func TestPolicyDoRespectsLimiter(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		p := Policy{
-			Backoff: Backoff{MaxAttempts: 0},
-			Limiter: NewLimiter(1, 1), // 1/sec, burst 1
-		}
-		classify := func(j job, err error) Decision { return Decision{} }
-		start := time.Now()
-		for range 3 {
-			_, err := p.Do(context.Background(), classify, nil, func(ctx context.Context) (job, error) {
-				return job{}, nil
-			})
-			if err != nil {
-				t.Fatalf("Do: %v", err)
-			}
-		}
-		if elapsed := time.Since(start); elapsed < 2*time.Second {
-			t.Errorf("elapsed = %v, want >= 2s across 3 calls at 1/s", elapsed)
 		}
 	})
 }

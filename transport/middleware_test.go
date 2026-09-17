@@ -19,7 +19,7 @@ func (okRoundTripper) RoundTrip(*http.Request) (*http.Response, error) {
 
 func TestChainFirstMiddlewareIsOutermost(t *testing.T) {
 	var order []string
-	mark := func(name string) RoundTripMiddleware {
+	mark := func(name string) Middleware {
 		return func(next RoundTrip) RoundTrip {
 			return func(req *http.Request) (*http.Response, error) {
 				order = append(order, name+":enter")
@@ -30,7 +30,7 @@ func TestChainFirstMiddlewareIsOutermost(t *testing.T) {
 		}
 	}
 
-	rt := chain(okRoundTripper{}.RoundTrip, []RoundTripMiddleware{mark("a"), mark("b"), mark("c")})
+	rt := chain(okRoundTripper{}.RoundTrip, []Middleware{mark("a"), mark("b"), mark("c")})
 	if _, err := rt(&http.Request{}); err != nil {
 		t.Fatalf("RoundTrip: %v", err)
 	}

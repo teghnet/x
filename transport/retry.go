@@ -31,14 +31,14 @@ type Retrier struct {
 	OnRetry func(policy.RetryEvent)
 }
 
-// Retry returns a [RoundTripMiddleware] that retries failed attempts per r.Backoff.
+// Retry returns a [Middleware] that retries failed attempts per r.Backoff.
 // It buffers the request body (or replays it via GetBody, when available)
 // so each attempt sees the original payload, and clones the request before
 // every attempt so each gets its own context and body. Because Retry
 // calls next more than once, everything installed after it in the chain re-runs
 // on every attempt too — a downstream middleware that mints a credential
 // re-mints it on each retry rather than reusing one that may have expired.
-func Retry(r Retrier) RoundTripMiddleware {
+func Retry(r Retrier) Middleware {
 	retryable := r.Retryable
 	if retryable == nil {
 		retryable = func(method string) policy.Classifier[*http.Response] {

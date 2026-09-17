@@ -19,7 +19,7 @@ import (
 // newTestClient builds an *http.Client that sends requests to srv through a
 // Transport wired to srv's in-memory network, with mw installed as its
 // middleware chain.
-func newTestClient(srv *httptest.Server, mw ...RoundTripMiddleware) *http.Client {
+func newTestClient(srv *httptest.Server, mw ...Middleware) *http.Client {
 	return New(
 		WithBaseTransport(srv.Client().Transport.RoundTrip),
 		WithMiddleware(mw...),

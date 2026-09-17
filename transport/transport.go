@@ -43,12 +43,13 @@ func (t *Transport) Client() *http.Client {
 	return &http.Client{Transport: t}
 }
 
-// RoundTrip implements [http.RoundTripper]. It never modifies req: every
+// RoundTrip implements [http.RoundTripper]. The chain is built once, by
+// [New]; this only runs it. It never modifies req: every
 // [RoundTripMiddleware] in the chain is required to clone before changing anything
 // on the request it receives (see [RoundTripMiddleware]), so no defensive clone is
 // needed here.
 func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
-	res, err := chain(t.base, t.mw)(req)
+	res, err := t.base(req)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", errPrefix, err)
 	}

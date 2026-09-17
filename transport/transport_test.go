@@ -21,7 +21,7 @@ import (
 // middleware chain.
 func newTestClient(srv *httptest.Server, mw ...RoundTripMiddleware) *http.Client {
 	return New(
-		WithBaseTransport(srv.Client().Transport),
+		WithBaseTransport(srv.Client().Transport.RoundTrip),
 		WithMiddleware(mw...),
 	).Client()
 }

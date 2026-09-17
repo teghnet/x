@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Paweł Zaremba
+// SPDX-License-Identifier: MIT
+
 // Package mt940 parses bank statements in the SWIFT MT940 format.
 //
 // MT940 itself is strict about its tag grammar (:20:, :61:, :86:, ...), but
@@ -14,7 +17,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/teghnet/x/banking"
+	"github.com/tatenadev/x/banking"
 )
 
 // errPrefix identifies errors originating from this package.

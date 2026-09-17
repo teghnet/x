@@ -11,7 +11,7 @@ import (
 
 	"charm.land/log/v2"
 
-	"github.com/teghnet/x"
+	"github.com/tatenadev/x"
 )
 
 type Collection[T comparable] []T

@@ -8,8 +8,8 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/teghnet/x"
-	"github.com/teghnet/x/fsio"
+	"github.com/tatenadev/x"
+	"github.com/tatenadev/x/fsio"
 )
 
 func TestGlob(t *testing.T) {

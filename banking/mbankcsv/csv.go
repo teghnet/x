@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Paweł Zaremba
+// SPDX-License-Identifier: MIT
+
 // Package csv parses the CSV export from mBank's "Lista operacji" (list of
 // operations) report.
 //
@@ -26,7 +29,7 @@ import (
 
 	"github.com/govalues/decimal"
 
-	"github.com/teghnet/x/banking"
+	"github.com/tatenadev/x/banking"
 )
 
 const ParserName = "mbank_lista_operacji_csv"

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Paweł Zaremba
+// SPDX-License-Identifier: MIT
+
 package transport
 
 import (
@@ -13,7 +16,7 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/teghnet/x/policy"
+	"github.com/tatenadev/x/policy"
 )
 
 // newTestClient builds an *http.Client that sends requests to srv through a

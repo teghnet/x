@@ -10,7 +10,7 @@ import (
 	"iter"
 	"os"
 
-	"github.com/teghnet/x"
+	"github.com/tatenadev/x"
 )
 
 func Decode(path string, v any) error {

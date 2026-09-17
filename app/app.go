@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Paweł Zaremba
+// SPDX-License-Identifier: MIT
+
 package app
 
 import (
@@ -6,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/teghnet/x/paths"
+	"github.com/tatenadev/x/paths"
 )
 
 type App struct {

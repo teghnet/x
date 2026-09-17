@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/teghnet/x/paths"
+	"github.com/tatenadev/x/paths"
 )
 
 func TestPaths_App(t *testing.T) {

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Paweł Zaremba
+// SPDX-License-Identifier: MIT
+
 // Package csv parses bank statements exported as CSV, driven by a
 // declarative ColumnMapper rather than one hand-written parser per bank.
 package csv
@@ -13,7 +16,7 @@ import (
 
 	"github.com/govalues/decimal"
 
-	"github.com/teghnet/x/banking"
+	"github.com/tatenadev/x/banking"
 )
 
 // errPrefix identifies errors and panics originating from this package.

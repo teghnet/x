@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Paweł Zaremba
+// SPDX-License-Identifier: MIT
+
 package csv
 
 import (
@@ -5,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/teghnet/x/banking"
+	"github.com/tatenadev/x/banking"
 )
 
 func collect(t *testing.T, p banking.Parser, data string) []*banking.Transaction {

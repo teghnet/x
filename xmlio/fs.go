@@ -7,7 +7,7 @@ import (
 	"io/fs"
 	"iter"
 
-	"github.com/teghnet/x"
+	"github.com/tatenadev/x"
 )
 
 func XML[T any](fsfs fs.FS, name string) (T, error) {

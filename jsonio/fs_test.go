@@ -7,7 +7,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/teghnet/x/jsonio"
+	"github.com/tatenadev/x/jsonio"
 )
 
 func TestLoadJSON(t *testing.T) {

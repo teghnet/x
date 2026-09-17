@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Paweł Zaremba
+// SPDX-License-Identifier: MIT
+
 package secrets
 
 import (
@@ -12,8 +15,8 @@ import (
 
 	"github.com/xakep666/gkpxc"
 
-	"github.com/teghnet/x"
-	"github.com/teghnet/x/parse/json"
+	"github.com/tatenadev/x"
+	"github.com/tatenadev/x/parse/json"
 )
 
 func NewKeepassXCProvider(ctx context.Context, path string) *KeepassXCProvider {

@@ -7,7 +7,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/teghnet/x"
+	"github.com/tatenadev/x"
 )
 
 // mockCloser is a mock implementation of io.Closer for testing.

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Paweł Zaremba
+// SPDX-License-Identifier: MIT
+
 package google
 
 import (
@@ -8,12 +11,12 @@ import (
 
 	"golang.org/x/oauth2"
 
-	"github.com/teghnet/x/google/gdrive"
-	"github.com/teghnet/x/google/gsheets"
-	"github.com/teghnet/x/google/oauth"
-	"github.com/teghnet/x/paths"
-	"github.com/teghnet/x/policy"
-	"github.com/teghnet/x/transport"
+	"github.com/tatenadev/x/google/gdrive"
+	"github.com/tatenadev/x/google/gsheets"
+	"github.com/tatenadev/x/google/oauth"
+	"github.com/tatenadev/x/paths"
+	"github.com/tatenadev/x/policy"
+	"github.com/tatenadev/x/transport"
 )
 
 func fullScope() []string {

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Paweł Zaremba
+// SPDX-License-Identifier: MIT
+
 // Package tui renders a terminal dashboard of task activity and stored state.
 //
 // It consumes the task and store packages only; it never reaches into api/* or
@@ -13,8 +16,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/teghnet/x/store"
-	"github.com/teghnet/x/task"
+	"github.com/tatenadev/x/store"
+	"github.com/tatenadev/x/task"
 )
 
 // Snapshot is the read-only data a dashboard frame renders. Callers assemble it

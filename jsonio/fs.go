@@ -7,8 +7,8 @@ import (
 	"io/fs"
 	"iter"
 
-	"github.com/teghnet/x"
-	"github.com/teghnet/x/parse/json"
+	"github.com/tatenadev/x"
+	"github.com/tatenadev/x/parse/json"
 )
 
 // ReadFS reads a JSON file and unmarshalls it into type T.

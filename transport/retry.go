@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Paweł Zaremba
+// SPDX-License-Identifier: MIT
+
 package transport
 
 import (
@@ -9,7 +12,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/teghnet/x/policy"
+	"github.com/tatenadev/x/policy"
 )
 
 // maxDiscardBody caps how much of a discarded response body [Retry] will

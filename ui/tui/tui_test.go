@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Paweł Zaremba
+// SPDX-License-Identifier: MIT
+
 package tui
 
 import (
@@ -7,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/teghnet/x/store"
-	"github.com/teghnet/x/task"
+	"github.com/tatenadev/x/store"
+	"github.com/tatenadev/x/task"
 )
 
 func TestCollectAndRender(t *testing.T) {

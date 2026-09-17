@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Paweł Zaremba
+// SPDX-License-Identifier: MIT
+
 package google
 
 import (
@@ -19,7 +22,7 @@ import (
 	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2/jwt"
 
-	"github.com/teghnet/x/paths"
+	"github.com/tatenadev/x/paths"
 )
 
 const clientSecretFilePattern = "client_secret_*.apps.googleusercontent.com.json"

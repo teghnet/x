@@ -1,9 +1,12 @@
+// Copyright (c) 2026 Paweł Zaremba
+// SPDX-License-Identifier: MIT
+
 package transport
 
 import (
 	"net/http"
 
-	"github.com/teghnet/x/policy"
+	"github.com/tatenadev/x/policy"
 )
 
 // RateLimit returns a [Middleware] limiting attempts to rps per second with

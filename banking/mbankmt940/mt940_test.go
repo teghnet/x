@@ -1,10 +1,13 @@
+// Copyright (c) 2026 Paweł Zaremba
+// SPDX-License-Identifier: MIT
+
 package mbankmt940
 
 import (
 	"strings"
 	"testing"
 
-	"github.com/teghnet/x/banking"
+	"github.com/tatenadev/x/banking"
 )
 
 // fixture is a synthetic mBank MT940 export, trimmed and with fake account

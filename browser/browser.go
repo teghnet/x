@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Paweł Zaremba
+// SPDX-License-Identifier: MIT
+
 // Package browser provides a lightweight stateful HTTP session for scraping.
 //
 // A Session keeps cookies across requests (via net/http/cookiejar), performs
@@ -14,7 +17,7 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 
-	"github.com/teghnet/x/parse/html"
+	"github.com/tatenadev/x/parse/html"
 )
 
 // Doer is the transport contract the session needs; *client.Client satisfies it.

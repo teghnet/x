@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Paweł Zaremba
+// SPDX-License-Identifier: MIT
+
 package json
 
 import (
@@ -7,7 +10,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/teghnet/x"
+	"github.com/tatenadev/x"
 )
 
 func Load[T any](path string) (v T, err error) {

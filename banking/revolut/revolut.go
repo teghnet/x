@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Paweł Zaremba
+// SPDX-License-Identifier: MIT
+
 // Package revolut parses the CSV export from Revolut's Personal Finance
 // report ("Current Accounts Transaction Statements").
 //
@@ -27,7 +30,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/teghnet/x/banking"
+	"github.com/tatenadev/x/banking"
 )
 
 const ParserName = "revolut_consolidated_csv"

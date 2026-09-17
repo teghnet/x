@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Paweł Zaremba
+// SPDX-License-Identifier: MIT
+
 // Package mt940 parses mBank's MT940 statement export.
 //
 // mBank's MT940 export uses the standard SWIFT grammar for Fields 20, 25,
@@ -17,8 +20,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/teghnet/x/banking"
-	"github.com/teghnet/x/banking/mt940"
+	"github.com/tatenadev/x/banking"
+	"github.com/tatenadev/x/banking/mt940"
 )
 
 const ParserName = "mbank_mt940"

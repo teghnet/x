@@ -1,4 +1,4 @@
-module github.com/teghnet/x
+module github.com/tatenadev/x
 
 go 1.27
 

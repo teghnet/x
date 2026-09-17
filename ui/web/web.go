@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Paweł Zaremba
+// SPDX-License-Identifier: MIT
+
 // Package web serves a small local HTML dashboard over task and store state.
 //
 // Assets are embedded with embed.FS so the binary is self-contained. Like the
@@ -14,8 +17,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/teghnet/x/store"
-	"github.com/teghnet/x/task"
+	"github.com/tatenadev/x/store"
+	"github.com/tatenadev/x/task"
 )
 
 //go:embed assets

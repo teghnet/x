@@ -3,8 +3,8 @@
 .vscode/
 .claude/
 
-# Dependencies
-/vendor/
+# Git Worktrees
+.worktreeinclude
 
 # Executable Binaries & Scripts
 /bin/*
@@ -17,12 +17,16 @@
 /.cache/
 /.config/
 /.data/
+/.run/
+/.share/
 /.state/
 
-# Go workspace file
+# Environment Variables
+*.env
+
+# Go Dependencies
+/vendor/
+
+# Go Workspace
 go.work
 go.work.sum
-
-# Environment variables
-.env
-

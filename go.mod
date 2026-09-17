@@ -1,6 +1,6 @@
 module github.com/teghnet/x
 
-go 1.27.0
+go 1.27
 
 require (
 	charm.land/huh/v2 v2.0.3

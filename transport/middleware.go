@@ -19,9 +19,6 @@ type RoundTripMiddleware func(RoundTrip) RoundTrip
 // transport via [WithBaseTransport].
 type RoundTrip func(*http.Request) (*http.Response, error)
 
-// RoundTrip implements [http.RoundTripper].
-// func (f RoundTrip) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
-
 // closeBody closes r.Body, if any. A [RoundTripMiddleware] that returns an
 // error without calling next must call this: net/http's Client assumes the
 // RoundTripper it invoked already closed the request body on any error

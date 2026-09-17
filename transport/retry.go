@@ -31,14 +31,14 @@ type Retrier struct {
 	OnRetry func(policy.RetryEvent)
 }
 
-// Retry returns a [TransportDecorator] that retries failed attempts per r.Backoff.
+// Retry returns a [RoundTripMiddleware] that retries failed attempts per r.Backoff.
 // It buffers the request body (or replays it via GetBody, when available)
 // so each attempt sees the original payload, and clones the request before
-// every attempt so each gets its own context and body. Because Retry is
-// itself a TransportDecorator, everything installed after it in the chain re-runs
+// every attempt so each gets its own context and body. Because Retry
+// calls next more than once, everything installed after it in the chain re-runs
 // on every attempt too — a downstream middleware that mints a credential
 // re-mints it on each retry rather than reusing one that may have expired.
-func Retry(r Retrier) TransportDecorator {
+func Retry(r Retrier) RoundTripMiddleware {
 	retryable := r.Retryable
 	if retryable == nil {
 		retryable = func(method string) policy.Classifier[*http.Response] {
@@ -47,55 +47,53 @@ func Retry(r Retrier) TransportDecorator {
 	}
 	p := policy.Policy{Backoff: r.Backoff, OnRetry: r.OnRetry}
 
-	return func(next http.RoundTripper) http.RoundTripper {
-		return RoundTripMiddleware(func(req *http.Request) (*http.Response, error) {
-			maxAttempts := max(r.Backoff.MaxAttempts, 0)
+	return func(req *http.Request, next http.RoundTripper) (*http.Response, error) {
+		maxAttempts := max(r.Backoff.MaxAttempts, 0)
 
-			// Buffer the body only when there might be more than one
-			// attempt and the request can't hand us a fresh reader itself
-			// via GetBody.
-			var body []byte
+		// Buffer the body only when there might be more than one
+		// attempt and the request can't hand us a fresh reader itself
+		// via GetBody.
+		var body []byte
+		switch {
+		case maxAttempts <= 0 || req.Body == nil || req.Body == http.NoBody:
+			// Single attempt, or nothing to replay.
+		case req.GetBody != nil:
+			// GetBody supplies a fresh reader per attempt; the original
+			// is redundant and would otherwise never be closed.
+			closeBody(req)
+		default:
+			b, err := io.ReadAll(req.Body)
+			closeBody(req)
+			if err != nil {
+				return nil, fmt.Errorf("read body: %w", err)
+			}
+			body = b
+		}
+
+		classify := retryable(req.Method)
+
+		attempt := func(ctx context.Context) (*http.Response, error) {
+			areq := req.Clone(ctx)
 			switch {
-			case maxAttempts <= 0 || req.Body == nil || req.Body == http.NoBody:
-				// Single attempt, or nothing to replay.
+			case maxAttempts <= 0:
+				// Single attempt: areq.Body already carries req's
+				// original reader via the shallow copy Clone performs.
 			case req.GetBody != nil:
-				// GetBody supplies a fresh reader per attempt; the original
-				// is redundant and would otherwise never be closed.
-				closeBody(req)
-			default:
-				b, err := io.ReadAll(req.Body)
-				closeBody(req)
+				// req.Body was already closed above, in favor of a
+				// fresh reader from GetBody on every attempt; nothing
+				// new to close if GetBody itself fails.
+				rc, err := req.GetBody()
 				if err != nil {
-					return nil, fmt.Errorf("read body: %w", err)
+					return nil, fmt.Errorf("get body: %w", err)
 				}
-				body = b
+				areq.Body = rc
+			case body != nil:
+				areq.Body = io.NopCloser(bytes.NewReader(body))
 			}
+			return next.RoundTrip(areq)
+		}
 
-			classify := retryable(req.Method)
-
-			attempt := func(ctx context.Context) (*http.Response, error) {
-				areq := req.Clone(ctx)
-				switch {
-				case maxAttempts <= 0:
-					// Single attempt: areq.Body already carries req's
-					// original reader via the shallow copy Clone performs.
-				case req.GetBody != nil:
-					// req.Body was already closed above, in favor of a
-					// fresh reader from GetBody on every attempt; nothing
-					// new to close if GetBody itself fails.
-					rc, err := req.GetBody()
-					if err != nil {
-						return nil, fmt.Errorf("get body: %w", err)
-					}
-					areq.Body = rc
-				case body != nil:
-					areq.Body = io.NopCloser(bytes.NewReader(body))
-				}
-				return next.RoundTrip(areq)
-			}
-
-			return p.Do(req.Context(), classify, discardResponse, attempt)
-		})
+		return p.Do(req.Context(), classify, discardResponse, attempt)
 	}
 }
 

@@ -5,7 +5,7 @@
 // HTTP and can drive retries for any request/response pair, such as a gRPC
 // call, a database round trip, or an SFTP transfer. This file builds an
 // [http.RoundTripper] on top of Policy for HTTP specifically, as a chain of
-// [Middleware] values — [Retry], [RateLimit], or your own — around a base
+// [TransportDecorator] values — [Retry], [RateLimit], or your own — around a base
 // transport; use [Policy.Do] directly to wrap other kinds of connectors.
 package transport
 
@@ -31,10 +31,10 @@ func New(opts ...Option) *Transport {
 	return t
 }
 
-// Transport is an [http.RoundTripper] built by [New]: a base transport wrapped in a chain of [Middleware].
+// Transport is an [http.RoundTripper] built by [New]: a base transport wrapped in a chain of [TransportDecorator].
 type Transport struct {
 	base http.RoundTripper
-	mw   []Middleware
+	mw   []TransportDecorator
 
 	chain http.RoundTripper
 }
@@ -46,8 +46,8 @@ func (t *Transport) Client() *http.Client {
 }
 
 // RoundTrip implements [http.RoundTripper]. It never modifies req: every
-// [Middleware] in the chain is required to clone before changing anything
-// on the request it receives (see [Middleware]), so no defensive clone is
+// [TransportDecorator] in the chain is required to clone before changing anything
+// on the request it receives (see [TransportDecorator]), so no defensive clone is
 // needed here.
 func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	res, err := t.chain.RoundTrip(req)
@@ -70,6 +70,6 @@ func WithBaseTransport(rt http.RoundTripper) Option {
 // WithMiddleware installs mw into the chain, in the order given: the first
 // is outermost, seeing the request first and the response last. Repeated
 // calls append rather than replace.
-func WithMiddleware(mw ...Middleware) Option {
+func WithMiddleware(mw ...TransportDecorator) Option {
 	return func(t *Transport) { t.mw = append(t.mw, mw...) }
 }

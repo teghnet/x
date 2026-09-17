@@ -47,7 +47,7 @@ func Retry(r Retrier) RoundTripMiddleware {
 	}
 	p := policy.Policy{Backoff: r.Backoff, OnRetry: r.OnRetry}
 
-	return func(req *http.Request, next http.RoundTripper) (*http.Response, error) {
+	return func(req *http.Request, next RoundTripFn) (*http.Response, error) {
 		maxAttempts := max(r.Backoff.MaxAttempts, 0)
 
 		// Buffer the body only when there might be more than one
@@ -90,7 +90,7 @@ func Retry(r Retrier) RoundTripMiddleware {
 			case body != nil:
 				areq.Body = io.NopCloser(bytes.NewReader(body))
 			}
-			return next.RoundTrip(areq)
+			return next(areq)
 		}
 
 		return p.Do(req.Context(), classify, discardResponse, attempt)

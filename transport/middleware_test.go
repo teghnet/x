@@ -20,16 +20,16 @@ func (okRoundTripper) RoundTrip(*http.Request) (*http.Response, error) {
 func TestChainFirstMiddlewareIsOutermost(t *testing.T) {
 	var order []string
 	mark := func(name string) RoundTripMiddleware {
-		return func(req *http.Request, next http.RoundTripper) (*http.Response, error) {
+		return func(req *http.Request, next RoundTripFn) (*http.Response, error) {
 			order = append(order, name+":enter")
-			res, err := next.RoundTrip(req)
+			res, err := next(req)
 			order = append(order, name+":exit")
 			return res, err
 		}
 	}
 
-	rt := chain(okRoundTripper{}, []RoundTripMiddleware{mark("a"), mark("b"), mark("c")})
-	if _, err := rt.RoundTrip(&http.Request{}); err != nil {
+	rt := chain(okRoundTripper{}.RoundTrip, []RoundTripMiddleware{mark("a"), mark("b"), mark("c")})
+	if _, err := rt(&http.Request{}); err != nil {
 		t.Fatalf("RoundTrip: %v", err)
 	}
 
@@ -45,8 +45,8 @@ func TestChainFirstMiddlewareIsOutermost(t *testing.T) {
 }
 
 func TestChainEmptyIsBasePassthrough(t *testing.T) {
-	rt := chain(okRoundTripper{}, nil)
-	res, err := rt.RoundTrip(&http.Request{})
+	rt := chain(okRoundTripper{}.RoundTrip, nil)
+	res, err := rt(&http.Request{})
 	if err != nil {
 		t.Fatalf("RoundTrip: %v", err)
 	}
@@ -71,7 +71,7 @@ func (b *closeTrackingBody) Close() error {
 func TestRateLimitNonPositiveIsNoOp(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		mw := RateLimit(0, 5)
-		next := okRoundTripper{}
+		next := okRoundTripper{}.RoundTrip
 		start := time.Now()
 		for range 50 {
 			if _, err := mw(&http.Request{}, next); err != nil {
@@ -87,7 +87,7 @@ func TestRateLimitNonPositiveIsNoOp(t *testing.T) {
 func TestRateLimitThrottlesAcrossCalls(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		mw := RateLimit(1, 1) // 1/sec, burst 1
-		next := okRoundTripper{}
+		next := okRoundTripper{}.RoundTrip
 		ctx := context.Background()
 
 		start := time.Now()
@@ -106,7 +106,7 @@ func TestRateLimitThrottlesAcrossCalls(t *testing.T) {
 func TestRateLimitRespectsContext(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		mw := RateLimit(0.001, 1) // effectively never refills within the test
-		next := okRoundTripper{}
+		next := okRoundTripper{}.RoundTrip
 
 		ctx := context.Background()
 		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", nil)
@@ -131,7 +131,7 @@ func TestRateLimitRespectsContext(t *testing.T) {
 func TestRateLimitClosesBodyOnContextError(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		mw := RateLimit(0.001, 1) // effectively never refills within the test
-		next := okRoundTripper{}
+		next := okRoundTripper{}.RoundTrip
 
 		ctx := context.Background()
 		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", nil)

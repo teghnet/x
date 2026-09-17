@@ -12,6 +12,7 @@ import (
 	"github.com/teghnet/x/google/gsheets"
 	"github.com/teghnet/x/google/oauth"
 	"github.com/teghnet/x/paths"
+	"github.com/teghnet/x/policy"
 	"github.com/teghnet/x/transport"
 )
 
@@ -43,7 +44,7 @@ func Client(ctx context.Context, xdg paths.XDG, scope ...string) (*http.Client, 
 	return transport.New(
 		transport.WithBaseTransport(&oauth2.Transport{Source: ts}),
 		transport.WithMiddleware(
-			transport.Retry(transport.Retrier{Backoff: transport.DefaultBackoff}),
+			transport.Retry(transport.Retrier{Backoff: policy.DefaultBackoff}),
 		),
 	).Client(), nil
 }

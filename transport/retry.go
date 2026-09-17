@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/teghnet/x/policy"
 )
 
 // maxDiscardBody caps how much of a discarded response body [Retry] will
@@ -21,12 +23,12 @@ const maxDiscardBody = 64 * 1024
 // wait between attempts, and which responses/errors are worth retrying.
 type Retrier struct {
 	// Backoff controls retry timing and count.
-	Backoff Backoff
+	Backoff policy.Backoff
 	// Retryable classifies whether an attempt should be retried, given the
 	// request's method. Nil uses RetryableHTTP(method, Backoff.Max).
-	Retryable func(method string) Classifier[*http.Response]
+	Retryable func(method string) policy.Classifier[*http.Response]
 	// OnRetry, if set, is called before each retry.
-	OnRetry func(RetryEvent)
+	OnRetry func(policy.RetryEvent)
 }
 
 // Retry returns a [Middleware] that retries failed attempts per r.Backoff.
@@ -39,11 +41,11 @@ type Retrier struct {
 func Retry(r Retrier) Middleware {
 	retryable := r.Retryable
 	if retryable == nil {
-		retryable = func(method string) Classifier[*http.Response] {
+		retryable = func(method string) policy.Classifier[*http.Response] {
 			return RetryableHTTP(method, r.Backoff.Max)
 		}
 	}
-	policy := Policy{Backoff: r.Backoff, OnRetry: r.OnRetry}
+	p := policy.Policy{Backoff: r.Backoff, OnRetry: r.OnRetry}
 
 	return func(next http.RoundTripper) http.RoundTripper {
 		return RoundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -92,7 +94,7 @@ func Retry(r Retrier) Middleware {
 				return next.RoundTrip(areq)
 			}
 
-			return policy.Do(req.Context(), classify, discardResponse, attempt)
+			return p.Do(req.Context(), classify, discardResponse, attempt)
 		})
 	}
 }
@@ -127,20 +129,20 @@ var idempotentMethods = map[string]bool{
 // non-idempotent ones (POST, PATCH, CONNECT), on the assumption that only
 // those two statuses reliably indicate the request was never processed. Any
 // Retry-After the response carries is honored and clamped to max.
-func RetryableHTTP(method string, max time.Duration) Classifier[*http.Response] {
-	return func(res *http.Response, err error) Decision {
+func RetryableHTTP(method string, max time.Duration) policy.Classifier[*http.Response] {
+	return func(res *http.Response, err error) policy.Decision {
 		if err != nil {
-			return Decision{Retry: true}
+			return policy.Decision{Retry: true}
 		}
 		retryable := res.StatusCode >= 500 || res.StatusCode == http.StatusTooManyRequests
 		if !retryable {
-			return Decision{}
+			return policy.Decision{}
 		}
 		if !idempotentMethods[method] && res.StatusCode != http.StatusTooManyRequests &&
 			res.StatusCode != http.StatusServiceUnavailable {
-			return Decision{}
+			return policy.Decision{}
 		}
-		return Decision{Retry: true, Delay: retryAfter(res, max)}
+		return policy.Decision{Retry: true, Delay: retryAfter(res, max)}
 	}
 }
 

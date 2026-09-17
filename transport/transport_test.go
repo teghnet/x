@@ -12,6 +12,8 @@ import (
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/teghnet/x/policy"
 )
 
 // newTestClient builds an *http.Client that sends requests to srv through a
@@ -35,7 +37,7 @@ func TestTransportRetriesOn5xxThenSucceeds(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		}))
 
-		client := newTestClient(srv, Retry(Retrier{Backoff: Backoff{Base: 10 * time.Millisecond, Factor: 2, MaxAttempts: 3}}))
+		client := newTestClient(srv, Retry(Retrier{policy.Backoff: policy.Backoff{Base: 10 * time.Millisecond, Factor: 2, MaxAttempts: 3}}))
 		res, err := client.Get(srv.URL)
 		if err != nil {
 			t.Fatalf("Get: %v", err)
@@ -59,7 +61,7 @@ func TestTransportNoRetryOn4xx(t *testing.T) {
 			w.WriteHeader(http.StatusNotFound)
 		}))
 
-		client := newTestClient(srv, Retry(Retrier{Backoff: Backoff{Base: 10 * time.Millisecond, Factor: 2, MaxAttempts: 3}}))
+		client := newTestClient(srv, Retry(Retrier{policy.Backoff: policy.Backoff{Base: 10 * time.Millisecond, Factor: 2, MaxAttempts: 3}}))
 		res, err := client.Get(srv.URL)
 		if err != nil {
 			t.Fatalf("Get: %v", err)
@@ -83,7 +85,7 @@ func TestTransportExhaustsRetriesAndReturnsLastError(t *testing.T) {
 			w.WriteHeader(http.StatusServiceUnavailable)
 		}))
 
-		client := newTestClient(srv, Retry(Retrier{Backoff: Backoff{Base: 10 * time.Millisecond, Factor: 2, MaxAttempts: 2}}))
+		client := newTestClient(srv, Retry(Retrier{policy.Backoff: policy.Backoff{Base: 10 * time.Millisecond, Factor: 2, MaxAttempts: 2}}))
 		res, err := client.Get(srv.URL)
 		if err != nil {
 			t.Fatalf("Get: %v", err)
@@ -116,7 +118,7 @@ func TestTransportBodyReplayedViaGetBody(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		}))
 
-		client := newTestClient(srv, Retry(Retrier{Backoff: Backoff{Base: time.Millisecond, Factor: 1, MaxAttempts: 3}}))
+		client := newTestClient(srv, Retry(Retrier{policy.Backoff: policy.Backoff{Base: time.Millisecond, Factor: 1, MaxAttempts: 3}}))
 		// http.NewRequest sets GetBody automatically for a strings.Reader,
 		// exercising the GetBody-per-attempt path.
 		req, err := http.NewRequest(http.MethodPost, srv.URL, strings.NewReader(payload))
@@ -155,7 +157,7 @@ func TestTransportBodyReplayedViaBuffering(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		}))
 
-		client := newTestClient(srv, Retry(Retrier{Backoff: Backoff{Base: time.Millisecond, Factor: 1, MaxAttempts: 3}}))
+		client := newTestClient(srv, Retry(Retrier{policy.Backoff: policy.Backoff{Base: time.Millisecond, Factor: 1, MaxAttempts: 3}}))
 		req, err := http.NewRequest(http.MethodPost, srv.URL, io.NopCloser(bytes.NewReader([]byte(payload))))
 		if err != nil {
 			t.Fatalf("NewRequest: %v", err)
@@ -187,7 +189,7 @@ func TestTransportNonIdempotentMethodOnlyRetries429And503(t *testing.T) {
 				calls.Add(1)
 				w.WriteHeader(http.StatusInternalServerError)
 			}))
-			client := newTestClient(srv, Retry(Retrier{Backoff: Backoff{Base: time.Millisecond, Factor: 1, MaxAttempts: 3}}))
+			client := newTestClient(srv, Retry(Retrier{policy.Backoff: policy.Backoff{Base: time.Millisecond, Factor: 1, MaxAttempts: 3}}))
 			res, err := client.Post(srv.URL, "text/plain", nil)
 			if err != nil {
 				t.Fatalf("Post: %v", err)
@@ -209,7 +211,7 @@ func TestTransportNonIdempotentMethodOnlyRetries429And503(t *testing.T) {
 				}
 				w.WriteHeader(http.StatusOK)
 			}))
-			client := newTestClient(srv, Retry(Retrier{Backoff: Backoff{Base: time.Millisecond, Factor: 1, MaxAttempts: 3}}))
+			client := newTestClient(srv, Retry(Retrier{policy.Backoff: policy.Backoff{Base: time.Millisecond, Factor: 1, MaxAttempts: 3}}))
 			res, err := client.Post(srv.URL, "text/plain", nil)
 			if err != nil {
 				t.Fatalf("Post: %v", err)
@@ -234,10 +236,10 @@ func TestTransportRetryAfterSecondsIsHonoredAndClamped(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		}))
 
-		var retries []RetryEvent
+		var retries []policy.RetryEvent
 		client := newTestClient(srv, Retry(Retrier{
-			Backoff: Backoff{Base: time.Millisecond, Factor: 1, Max: 2 * time.Second, MaxAttempts: 1},
-			OnRetry: func(r RetryEvent) { retries = append(retries, r) },
+			policy.Backoff: policy.Backoff{Base: time.Millisecond, Factor: 1, Max: 2 * time.Second, MaxAttempts: 1},
+			OnRetry:        func(r policy.RetryEvent) { retries = append(retries, r) },
 		}))
 		start := time.Now()
 		res, err := client.Get(srv.URL)
@@ -270,7 +272,7 @@ func TestTransportRetryAfterHTTPDateIsHonored(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		}))
 
-		client := newTestClient(srv, Retry(Retrier{Backoff: Backoff{Base: time.Millisecond, Factor: 1, MaxAttempts: 1}}))
+		client := newTestClient(srv, Retry(Retrier{policy.Backoff: policy.Backoff{Base: time.Millisecond, Factor: 1, MaxAttempts: 1}}))
 		start := time.Now()
 		res, err := client.Get(srv.URL)
 		if err != nil {
@@ -291,7 +293,7 @@ func TestTransportContextCancellationDuringBackoff(t *testing.T) {
 			w.WriteHeader(http.StatusInternalServerError)
 		}))
 
-		client := newTestClient(srv, Retry(Retrier{Backoff: Backoff{Base: time.Minute, Factor: 1, MaxAttempts: 5}}))
+		client := newTestClient(srv, Retry(Retrier{policy.Backoff: policy.Backoff{Base: time.Minute, Factor: 1, MaxAttempts: 5}}))
 		ctx, cancel := context.WithCancel(context.Background())
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL, nil)
 		if err != nil {

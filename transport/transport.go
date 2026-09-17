@@ -31,8 +31,7 @@ func New(opts ...Option) *Transport {
 	return t
 }
 
-// Transport is an [http.RoundTripper] built by [New]: a base transport
-// wrapped in a chain of [Middleware].
+// Transport is an [http.RoundTripper] built by [New]: a base transport wrapped in a chain of [Middleware].
 type Transport struct {
 	base http.RoundTripper
 	mw   []Middleware

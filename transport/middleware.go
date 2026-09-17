@@ -15,8 +15,7 @@ import (
 // request's body itself (see [closeBody]), since nothing downstream will.
 type Middleware func(next http.RoundTripper) http.RoundTripper
 
-// RoundTripFunc adapts a function to [http.RoundTripper], mirroring
-// [http.HandlerFunc].
+// RoundTripFunc adapts a function to [http.RoundTripper], mirroring [http.HandlerFunc].
 type RoundTripFunc func(*http.Request) (*http.Response, error)
 
 // RoundTrip implements [http.RoundTripper].
@@ -28,14 +27,14 @@ func (f RoundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { retu
 // path, and will not close it itself.
 func closeBody(r *http.Request) {
 	if r.Body != nil {
-		r.Body.Close() //nolint:errcheck // best-effort close on the error path
+		_ = r.Body.Close()
 	}
 }
 
-// chain composes mw around base. mw[0] ends up outermost: it sees the
-// request first and the response last, and — for a middleware like Retry
-// that calls next more than once — every middleware after it re-runs on
-// each of those calls.
+// chain composes mw around base.
+// mw[0] ends up outermost: it sees the request first and the response last,
+// and — for a middleware like Retry that calls next more than once — every middleware after it
+// re-runs on each of those calls.
 func chain(base http.RoundTripper, mw []Middleware) http.RoundTripper {
 	rt := base
 	for _, m := range slices.Backward(mw) {

@@ -46,54 +46,55 @@ func Retry(r Retrier) RoundTripMiddleware {
 		}
 	}
 	p := policy.Policy{Backoff: r.Backoff, OnRetry: r.OnRetry}
+	return func(next RoundTrip) RoundTrip {
+		return func(req *http.Request) (*http.Response, error) {
+			maxAttempts := max(r.Backoff.MaxAttempts, 0)
 
-	return func(req *http.Request, next RoundTripFn) (*http.Response, error) {
-		maxAttempts := max(r.Backoff.MaxAttempts, 0)
-
-		// Buffer the body only when there might be more than one
-		// attempt and the request can't hand us a fresh reader itself
-		// via GetBody.
-		var body []byte
-		switch {
-		case maxAttempts <= 0 || req.Body == nil || req.Body == http.NoBody:
-			// Single attempt, or nothing to replay.
-		case req.GetBody != nil:
-			// GetBody supplies a fresh reader per attempt; the original
-			// is redundant and would otherwise never be closed.
-			closeBody(req)
-		default:
-			b, err := io.ReadAll(req.Body)
-			closeBody(req)
-			if err != nil {
-				return nil, fmt.Errorf("read body: %w", err)
-			}
-			body = b
-		}
-
-		classify := retryable(req.Method)
-
-		attempt := func(ctx context.Context) (*http.Response, error) {
-			areq := req.Clone(ctx)
+			// Buffer the body only when there might be more than one
+			// attempt and the request can't hand us a fresh reader itself
+			// via GetBody.
+			var body []byte
 			switch {
-			case maxAttempts <= 0:
-				// Single attempt: areq.Body already carries req's
-				// original reader via the shallow copy Clone performs.
+			case maxAttempts <= 0 || req.Body == nil || req.Body == http.NoBody:
+				// Single attempt, or nothing to replay.
 			case req.GetBody != nil:
-				// req.Body was already closed above, in favor of a
-				// fresh reader from GetBody on every attempt; nothing
-				// new to close if GetBody itself fails.
-				rc, err := req.GetBody()
+				// GetBody supplies a fresh reader per attempt; the original
+				// is redundant and would otherwise never be closed.
+				closeBody(req)
+			default:
+				b, err := io.ReadAll(req.Body)
+				closeBody(req)
 				if err != nil {
-					return nil, fmt.Errorf("get body: %w", err)
+					return nil, fmt.Errorf("read body: %w", err)
 				}
-				areq.Body = rc
-			case body != nil:
-				areq.Body = io.NopCloser(bytes.NewReader(body))
+				body = b
 			}
-			return next(areq)
-		}
 
-		return p.Do(req.Context(), classify, discardResponse, attempt)
+			classify := retryable(req.Method)
+
+			attempt := func(ctx context.Context) (*http.Response, error) {
+				areq := req.Clone(ctx)
+				switch {
+				case maxAttempts <= 0:
+					// Single attempt: areq.Body already carries req's
+					// original reader via the shallow copy Clone performs.
+				case req.GetBody != nil:
+					// req.Body was already closed above, in favor of a
+					// fresh reader from GetBody on every attempt; nothing
+					// new to close if GetBody itself fails.
+					rc, err := req.GetBody()
+					if err != nil {
+						return nil, fmt.Errorf("get body: %w", err)
+					}
+					areq.Body = rc
+				case body != nil:
+					areq.Body = io.NopCloser(bytes.NewReader(body))
+				}
+				return next(areq)
+			}
+
+			return p.Do(req.Context(), classify, discardResponse, attempt)
+		}
 	}
 }
 

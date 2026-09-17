@@ -42,7 +42,7 @@ func Client(ctx context.Context, xdg paths.XDG, scope ...string) (*http.Client, 
 	}
 
 	return transport.New(
-		transport.WithBaseTransport(&oauth2.Transport{Source: ts}),
+		transport.WithBaseTransport((&oauth2.Transport{Source: ts}).RoundTrip),
 		transport.WithMiddleware(
 			transport.Retry(transport.Retrier{Backoff: policy.DefaultBackoff}),
 		),

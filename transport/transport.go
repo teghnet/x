@@ -23,20 +23,18 @@ const errPrefix = "transport"
 // New is a pure pass-through to base — retries, rate limiting, and anything
 // else are all opt-in via [WithMiddleware].
 func New(opts ...Option) *Transport {
-	t := &Transport{base: http.DefaultTransport}
+	t := &Transport{base: http.DefaultTransport.RoundTrip}
 	for _, opt := range opts {
 		opt(t)
 	}
-	t.chain = chain(t.base.RoundTrip, t.mw)
+	t.base = chain(t.base, t.mw)
 	return t
 }
 
 // Transport is an [http.RoundTripper] built by [New]: a base transport wrapped in a chain of [RoundTripMiddleware].
 type Transport struct {
-	base http.RoundTripper
+	base RoundTrip
 	mw   []RoundTripMiddleware
-
-	chain http.RoundTripper
 }
 
 // Client returns an [http.Client] using t as its transport. Most callers
@@ -50,7 +48,7 @@ func (t *Transport) Client() *http.Client {
 // on the request it receives (see [RoundTripMiddleware]), so no defensive clone is
 // needed here.
 func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
-	res, err := t.chain.RoundTrip(req)
+	res, err := chain(t.base, t.mw)(req)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", errPrefix, err)
 	}
@@ -63,7 +61,7 @@ type Option func(*Transport)
 // WithBaseTransport sets the underlying transport, typically an
 // authenticating transport so credentials are injected. Defaults to
 // http.DefaultTransport.
-func WithBaseTransport(rt http.RoundTripper) Option {
+func WithBaseTransport(rt RoundTrip) Option {
 	return func(t *Transport) { t.base = rt }
 }
 

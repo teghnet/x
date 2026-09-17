@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"slices"
 
+	"golang.org/x/oauth2"
+
 	"github.com/teghnet/x/google/gdrive"
 	"github.com/teghnet/x/google/gsheets"
 	"github.com/teghnet/x/google/oauth"
@@ -37,10 +39,11 @@ func Client(ctx context.Context, xdg paths.XDG, scope ...string) (*http.Client, 
 	if err != nil {
 		return nil, err
 	}
+
 	return transport.New(
+		transport.WithBaseTransport(&oauth2.Transport{Source: ts}),
 		transport.WithMiddleware(
 			transport.Retry(transport.Retrier{Backoff: transport.DefaultBackoff}),
-			oauth.Middleware(ts),
 		),
 	).Client(), nil
 }

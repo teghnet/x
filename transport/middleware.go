@@ -1,7 +1,6 @@
 package transport
 
 import (
-	"fmt"
 	"net/http"
 	"slices"
 )
@@ -22,24 +21,6 @@ type RoundTripFunc func(*http.Request) (*http.Response, error)
 
 // RoundTrip implements [http.RoundTripper].
 func (f RoundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
-
-// MutateRequest returns a [Middleware] that calls fn on a clone of the
-// request before passing it to next. fn receives a private clone — the
-// [http.Request] r itself passed to MutateRequest's RoundTripper is never
-// modified — so fn is free to change headers, URL, or anything else without
-// regard for who else holds a reference to the original request.
-func MutateRequest(fn func(*http.Request) error) Middleware {
-	return func(next http.RoundTripper) http.RoundTripper {
-		return RoundTripFunc(func(r *http.Request) (*http.Response, error) {
-			r2 := r.Clone(r.Context())
-			if err := fn(r2); err != nil {
-				closeBody(r)
-				return nil, fmt.Errorf("mutate request: %w", err)
-			}
-			return next.RoundTrip(r2)
-		})
-	}
-}
 
 // closeBody closes r.Body, if any. A [Middleware] that returns an error
 // without calling next must call this: net/http's Client assumes the

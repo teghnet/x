@@ -34,8 +34,8 @@ type Retrier struct {
 // so each attempt sees the original payload, and clones the request before
 // every attempt so each gets its own context and body. Because Retry is
 // itself a Middleware, everything installed after it in the chain re-runs
-// on every attempt too — a [MutateRequest]-based credential is re-applied
-// on retry rather than reused stale.
+// on every attempt too — a downstream middleware that mints a credential
+// re-mints it on each retry rather than reusing one that may have expired.
 func Retry(r Retrier) Middleware {
 	retryable := r.Retryable
 	if retryable == nil {

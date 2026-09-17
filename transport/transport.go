@@ -5,9 +5,8 @@
 // HTTP and can drive retries for any request/response pair, such as a gRPC
 // call, a database round trip, or an SFTP transfer. This file builds an
 // [http.RoundTripper] on top of Policy for HTTP specifically, as a chain of
-// [Middleware] values — [Retry], [RateLimit], [MutateRequest], or your own
-// — around a base transport; use [Policy.Do] directly to wrap other kinds
-// of connectors.
+// [Middleware] values — [Retry], [RateLimit], or your own — around a base
+// transport; use [Policy.Do] directly to wrap other kinds of connectors.
 package transport
 
 import (
@@ -21,8 +20,8 @@ const errPrefix = "transport"
 // New builds an [http.RoundTripper] out of base (http.DefaultTransport
 // unless overridden by [WithBaseTransport]) wrapped in the middleware
 // installed by [WithMiddleware], in the order given. With no middleware,
-// New is a pure pass-through to base — retries, rate limiting, and request
-// mutation are all opt-in via [WithMiddleware].
+// New is a pure pass-through to base — retries, rate limiting, and anything
+// else are all opt-in via [WithMiddleware].
 func New(opts ...Option) *Transport {
 	t := &Transport{base: http.DefaultTransport}
 	for _, opt := range opts {
@@ -49,8 +48,8 @@ func (t *Transport) Client() *http.Client {
 
 // RoundTrip implements [http.RoundTripper]. It never modifies req: every
 // [Middleware] in the chain is required to clone before changing anything
-// on the request it receives (see [Middleware], [MutateRequest]), so no
-// defensive clone is needed here.
+// on the request it receives (see [Middleware]), so no defensive clone is
+// needed here.
 func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	res, err := t.chain.RoundTrip(req)
 	if err != nil {

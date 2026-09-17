@@ -32,9 +32,10 @@ type Retrier struct {
 // Retry returns a [Middleware] that retries failed attempts per r.Backoff.
 // It buffers the request body (or replays it via GetBody, when available)
 // so each attempt sees the original payload, and clones the request before
-// every attempt so a downstream middleware that mutates in place (such as
-// [MutateRequest]) is re-consulted each time — a refreshable credential is
-// re-applied on retry rather than reused stale.
+// every attempt so each gets its own context and body. Because Retry is
+// itself a Middleware, everything installed after it in the chain re-runs
+// on every attempt too — a [MutateRequest]-based credential is re-applied
+// on retry rather than reused stale.
 func Retry(r Retrier) Middleware {
 	retryable := r.Retryable
 	if retryable == nil {
@@ -52,9 +53,16 @@ func Retry(r Retrier) Middleware {
 			// attempt and the request can't hand us a fresh reader itself
 			// via GetBody.
 			var body []byte
-			if maxAttempts > 0 && req.GetBody == nil && req.Body != nil && req.Body != http.NoBody {
+			switch {
+			case maxAttempts <= 0 || req.Body == nil || req.Body == http.NoBody:
+				// Single attempt, or nothing to replay.
+			case req.GetBody != nil:
+				// GetBody supplies a fresh reader per attempt; the original
+				// is redundant and would otherwise never be closed.
+				closeBody(req)
+			default:
 				b, err := io.ReadAll(req.Body)
-				req.Body.Close()
+				closeBody(req)
 				if err != nil {
 					return nil, fmt.Errorf("read body: %w", err)
 				}
@@ -70,6 +78,9 @@ func Retry(r Retrier) Middleware {
 					// Single attempt: areq.Body already carries req's
 					// original reader via the shallow copy Clone performs.
 				case req.GetBody != nil:
+					// req.Body was already closed above, in favor of a
+					// fresh reader from GetBody on every attempt; nothing
+					// new to close if GetBody itself fails.
 					rc, err := req.GetBody()
 					if err != nil {
 						return nil, fmt.Errorf("get body: %w", err)

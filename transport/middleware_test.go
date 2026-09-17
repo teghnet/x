@@ -3,6 +3,7 @@ package transport
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"testing"
 	"testing/synctest"
@@ -93,6 +94,60 @@ func TestMutateRequestShortCircuitsOnError(t *testing.T) {
 	}
 }
 
+func TestMutateRequestDoesNotTouchCallersRequest(t *testing.T) {
+	var gotOriginal, gotMutated string
+	next := RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		gotOriginal = req.Header.Get("X-Original")
+		gotMutated = req.Header.Get("X-Mutated")
+		return &http.Response{StatusCode: http.StatusOK}, nil
+	})
+	mw := MutateRequest(func(r *http.Request) error {
+		r.Header.Set("X-Mutated", "yes")
+		return nil
+	})
+
+	req := &http.Request{Header: http.Header{"X-Original": {"yes"}}}
+	if _, err := mw(next).RoundTrip(req); err != nil {
+		t.Fatalf("RoundTrip: %v", err)
+	}
+
+	if gotOriginal != "yes" || gotMutated != "yes" {
+		t.Errorf("next saw X-Original=%q X-Mutated=%q, want both %q", gotOriginal, gotMutated, "yes")
+	}
+	if req.Header.Get("X-Mutated") != "" {
+		t.Error("mutator leaked into the caller's original request")
+	}
+}
+
+func TestMutateRequestClosesBodyOnError(t *testing.T) {
+	next := RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusOK}, nil
+	})
+	body := &closeTrackingBody{}
+	mw := MutateRequest(func(r *http.Request) error { return errors.New("mutate boom") })
+
+	_, err := mw(next).RoundTrip(&http.Request{Header: http.Header{}, Body: body})
+	if err == nil {
+		t.Fatal("RoundTrip: want error")
+	}
+	if !body.closed {
+		t.Error("request body was not closed on the mutator's error path")
+	}
+}
+
+// closeTrackingBody is an [io.ReadCloser] that records whether Close was
+// called.
+type closeTrackingBody struct {
+	closed bool
+}
+
+func (b *closeTrackingBody) Read([]byte) (int, error) { return 0, io.EOF }
+
+func (b *closeTrackingBody) Close() error {
+	b.closed = true
+	return nil
+}
+
 func TestRateLimitNonPositiveIsNoOp(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		mw := RateLimit(0, 5)
@@ -149,6 +204,33 @@ func TestRateLimitRespectsContext(t *testing.T) {
 
 		if err := <-done; !errors.Is(err, context.Canceled) {
 			t.Errorf("err = %v, want context.Canceled", err)
+		}
+	})
+}
+
+func TestRateLimitClosesBodyOnContextError(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		mw := RateLimit(0.001, 1) // effectively never refills within the test
+		rt := mw(okRoundTripper{})
+
+		ctx := context.Background()
+		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", nil)
+		if _, err := rt.RoundTrip(req); err != nil {
+			t.Fatalf("first RoundTrip (uses burst token): %v", err)
+		}
+
+		cctx, cancel := context.WithCancel(ctx)
+		body := &closeTrackingBody{}
+		req2, _ := http.NewRequestWithContext(cctx, http.MethodGet, "http://example.com", body)
+		done := make(chan error, 1)
+		go func() { _, err := rt.RoundTrip(req2); done <- err }()
+
+		synctest.Wait()
+		cancel()
+		<-done
+
+		if !body.closed {
+			t.Error("request body was not closed when Wait returned an error")
 		}
 	})
 }

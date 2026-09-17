@@ -18,6 +18,7 @@ func RateLimit(rps float64, burst int) Middleware {
 	return func(next http.RoundTripper) http.RoundTripper {
 		return RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 			if err := l.Wait(req.Context()); err != nil {
+				closeBody(req)
 				return nil, err
 			}
 			return next.RoundTrip(req)

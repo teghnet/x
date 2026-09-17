@@ -47,13 +47,12 @@ func (t *Transport) Client() *http.Client {
 	return &http.Client{Transport: t}
 }
 
-// RoundTrip implements [http.RoundTripper]. It never modifies req: it
-// clones once here, before the chain sees it, so every middleware in the
-// chain — including one that mutates in place, such as [MutateRequest] —
-// can never reach the caller's original request.
+// RoundTrip implements [http.RoundTripper]. It never modifies req: every
+// [Middleware] in the chain is required to clone before changing anything
+// on the request it receives (see [Middleware], [MutateRequest]), so no
+// defensive clone is needed here.
 func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
-	areq := req.Clone(req.Context())
-	res, err := t.chain.RoundTrip(areq)
+	res, err := t.chain.RoundTrip(req)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", errPrefix, err)
 	}

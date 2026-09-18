@@ -56,8 +56,8 @@ func TestParseFixture(t *testing.T) {
 	if got, want := tx0.Amount.String(), "-250.00"; got != want {
 		t.Errorf("txs[0].Amount = %s, want %s", got, want)
 	}
-	if !tx0.BookingDate.Equal(time.Date(2026, 1, 5, 0, 0, 0, 0, time.UTC)) {
-		t.Errorf("txs[0].BookingDate = %v", tx0.BookingDate)
+	if !tx0.PostingDate.Equal(time.Date(2026, 1, 5, 0, 0, 0, 0, time.UTC)) {
+		t.Errorf("txs[0].BookingDate = %v", tx0.PostingDate)
 	}
 	if !tx0.TransactionDate.Equal(time.Date(2026, 1, 5, 0, 0, 0, 0, time.UTC)) {
 		t.Errorf("txs[0].TransactionDate = %v", tx0.TransactionDate)
@@ -144,8 +144,8 @@ func TestEntryDateYearRollover(t *testing.T) {
 	if want := time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC); !txs[0].TransactionDate.Equal(want) {
 		t.Errorf("TransactionDate = %v, want %v", txs[0].TransactionDate, want)
 	}
-	if want := time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC); !txs[0].BookingDate.Equal(want) {
-		t.Errorf("BookingDate = %v, want %v", txs[0].BookingDate, want)
+	if want := time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC); !txs[0].PostingDate.Equal(want) {
+		t.Errorf("BookingDate = %v, want %v", txs[0].PostingDate, want)
 	}
 }
 

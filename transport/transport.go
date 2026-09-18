@@ -37,12 +37,6 @@ type Transport struct {
 	mw   []Middleware
 }
 
-// Client returns an [http.Client] using t as its transport. Most callers
-// want this rather than using t directly.
-func (t *Transport) Client() *http.Client {
-	return &http.Client{Transport: t}
-}
-
 // RoundTrip implements [http.RoundTripper]. The chain is built once, by
 // [New]; this only runs it. It never modifies req: every
 // [Middleware] in the chain is required to clone before changing anything

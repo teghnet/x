@@ -31,7 +31,7 @@ type Transaction struct {
 	// When the transaction was executed
 	TransactionDate time.Time
 	// When the funds actually settled/cleared
-	BookingDate time.Time
+	PostingDate time.Time
 
 	// -- Financials --
 	// The monetary value. Positive for credits (income), negative for debits (spend)

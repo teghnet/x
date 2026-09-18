@@ -243,7 +243,7 @@ func (p *parser) Parse(ctx context.Context, r io.Reader) iter.Seq2[*banking.Tran
 				}
 				tx := &banking.Transaction{
 					TransactionDate:  t61.EntryDate,
-					BookingDate:      t61.ValueDate,
+					PostingDate:      t61.ValueDate,
 					Amount:           t61.Amount,
 					Currency:         currency,
 					Type:             t61.TypeCode,

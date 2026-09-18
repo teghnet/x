@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Paweł Zaremba
 // SPDX-License-Identifier: MIT
 
-// Package csv parses the CSV export from mBank's "Lista operacji" (list of
+// Package mbankcsv parses the CSV export from mBank's "Lista operacji" (list of
 // operations) report.
 //
 // That export isn't a clean transaction table: it starts with a variable
@@ -157,7 +157,7 @@ func (p *parser) mapRow(record []string) (*banking.Transaction, error) {
 
 	tx := &banking.Transaction{
 		TransactionDate:  date,
-		BookingDate:      date,
+		PostingDate:      date,
 		Description:      strings.TrimSpace(record[1]),
 		Category:         strings.TrimSpace(record[3]),
 		Amount:           amount,

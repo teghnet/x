@@ -55,7 +55,7 @@ func TestHappyPath(t *testing.T) {
 	if txs[1].Description != "Coffee" {
 		t.Errorf("txs[1].Description = %q", txs[1].Description)
 	}
-	if txs[0].BookingDate != txs[0].TransactionDate {
+	if txs[0].PostingDate != txs[0].TransactionDate {
 		t.Errorf("BookingDate should default to TransactionDate when unset")
 	}
 }

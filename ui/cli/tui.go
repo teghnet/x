@@ -1,13 +1,13 @@
 // Copyright (c) 2026 Paweł Zaremba
 // SPDX-License-Identifier: MIT
 
-// Package tui renders a terminal dashboard of task activity and stored state.
+// Package cli renders a terminal dashboard of task activity and stored state.
 //
 // It consumes the task and store packages only; it never reaches into api/* or
 // client. The renderer is deliberately dependency-free (plain text to an
 // io.Writer) so it stays easy to test and embeds no terminal library. A caller
 // wanting a full-screen interactive UI can build one atop Snapshot.
-package tui
+package cli
 
 import (
 	"context"

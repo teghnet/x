@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Paweł Zaremba
 // SPDX-License-Identifier: MIT
 
-// Package mt940 parses mBank's MT940 statement export.
+// Package mbankmt940 parses mBank's MT940 statement export.
 //
 // mBank's MT940 export uses the standard SWIFT grammar for Fields 20, 25,
 // 28C, 60F/60M, 61, 62F/62M, 64 (handled generically by package

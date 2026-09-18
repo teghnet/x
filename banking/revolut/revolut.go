@@ -182,7 +182,7 @@ func (p *parser) mapRow(record []string, section string) (*banking.Transaction, 
 
 	tx := &banking.Transaction{
 		TransactionDate:  date,
-		BookingDate:      date,
+		PostingDate:      date,
 		Description:      strings.TrimSpace(record[1]),
 		Category:         strings.TrimSpace(record[2]),
 		Amount:           m.Amount,

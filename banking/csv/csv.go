@@ -153,14 +153,14 @@ func (p *parser) mapRow(record []string) (*banking.Transaction, error) {
 		return nil, fmt.Errorf("parse transaction date %q: %w", date, err)
 	}
 	tx.TransactionDate = txDate
-	tx.BookingDate = txDate
+	tx.PostingDate = txDate
 
 	if bookingDate, ok := optional(p.mapper.BookingDateIdx); ok {
 		bd, err := time.Parse(p.cfg.DateFormat, bookingDate)
 		if err != nil {
 			return nil, fmt.Errorf("parse booking date %q: %w", bookingDate, err)
 		}
-		tx.BookingDate = bd
+		tx.PostingDate = bd
 	}
 
 	amountStr, err := required(p.mapper.AmountIdx)
